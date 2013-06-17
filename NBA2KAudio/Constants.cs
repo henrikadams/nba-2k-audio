@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NBA2KAudio
+﻿namespace NBA2KAudio
 {
+    #region Using Directives
+
+    using System.Collections.Generic;
+
+    #endregion
+
     public static class Constants
     {
         public const long JukeboxLength = 23406024;
+
         public static readonly List<long> SongOffsets = new List<long>
             {
                 0,

@@ -1,24 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Windows;
-
-namespace NBA2KAudio
+﻿namespace NBA2KAudio
 {
+    #region Using Directives
+
+    using System;
     using System.Diagnostics;
     using System.IO;
     using System.Reflection;
+    using System.Windows;
     using System.Windows.Threading;
 
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
+    #endregion
+
+    /// <summary>Interaction logic for App.xaml</summary>
     public partial class App : Application
     {
         public const string AppName = "NBA 2K Audio Editor";
-        private const string AppRegistryKey = @"SOFTWARE\Lefteris Aslanoglou\NBA 2K Audio Editor";
+        public const string AppRegistryKey = @"SOFTWARE\Lefteris Aslanoglou\NBA 2K Audio Editor";
 
         public static readonly string AppDocsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
                                                     + @"\NBA 2K Audio Editor\";
