@@ -6,7 +6,7 @@
 
 
 	Features
-		- Allows users to edit jukeboxmusic.bin (more files hopefully to become compatible soon, although the goal is for every file to be automatically detected and made compatible, as long as it's in the NBA 2K BIN audio format)
+		- Allows users to edit NBA 2K13's jukeboxmusic.bin (more files hopefully to become compatible soon, although the goal is for every file to be automatically detected and made compatible, as long as it's in the NBA 2K BIN audio format)
 		- Automatically encodes MP3 and WAV files to the right format
 		- Only allows the user to replace songs that are longer than the user-selected song; any remaining duration is automatically filled with silence
 
