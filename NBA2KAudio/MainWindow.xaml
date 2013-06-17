@@ -1,0 +1,23 @@
+﻿<Window x:Class="NBA2KAudio.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NBA 2K Audio Test" Height="282" Width="686" Loaded="Window_Loaded">
+    <Grid>
+        <Button x:Name="btnReplaceSong" Content="Apply" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="75"
+                Click="btnReplaceSong_Click" />
+        <TextBlock HorizontalAlignment="Left" Margin="10,13,0,0" TextWrapping="Wrap" Text="Song File"
+                   VerticalAlignment="Top" />
+        <TextBox x:Name="txtSongFile" Height="23" Margin="127,10,90,0" VerticalAlignment="Top" IsReadOnly="True" TextChanged="txtSongFile_TextChanged" />
+        <TextBlock HorizontalAlignment="Left" Margin="10,41,0,0" TextWrapping="Wrap" Text="Jukebox File"
+                   VerticalAlignment="Top" />
+        <TextBox x:Name="txtJukeboxFile" Height="23" Margin="127,38,90,0" VerticalAlignment="Top" IsReadOnly="True" TextChanged="txtJukeboxFile_TextChanged" />
+        <DataGrid x:Name="dgSongs" Margin="239,73,10,10" AutoGenerateColumns="True" CanUserAddRows="False"
+                  CanUserDeleteRows="False" SelectionMode="Single" />
+        <Button x:Name="btnSelectSong" Content="Browse" Margin="0,10,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="75" Click="btnSelectSong_Click"/>
+        <Button x:Name="btnSelectJukebox" Content="Browse" Margin="0,38,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="75" Click="btnSelectJukebox_Click"/>
+        <GroupBox Header="Song Info" Margin="10,73,0,51" Padding="2" HorizontalAlignment="Left" Width="213">
+            <TextBlock Name="txbSongInfo" />
+        </GroupBox>
+
+    </Grid>
+</Window>
