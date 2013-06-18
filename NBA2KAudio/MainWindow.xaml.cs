@@ -68,7 +68,21 @@
             }
 
             var ms = new MemoryStream(File.ReadAllBytes(txtSongFile.Text));
-            var bw = new BinaryWriter(File.Open(txtJukeboxFile.Text, FileMode.Open, FileAccess.Write, FileShare.ReadWrite));
+            BinaryWriter bw;
+            try
+            {
+                bw = new BinaryWriter(File.Open(txtJukeboxFile.Text, FileMode.Open, FileAccess.Write, FileShare.ReadWrite));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "An error happened while trying to open the NBA 2K audio file in order to replace a segment.\n\nDescription: "
+                    + ex.Message,
+                    App.AppName,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
 
             var songToReplace = (Song) dgSongs.SelectedItem;
             bw.BaseStream.Position = _curChunkOffsets[songToReplace.FirstChunkID];
@@ -331,7 +345,19 @@
             Tools.SetRegistrySetting("LastJukeboxPath", Path.GetDirectoryName(fn));
 
             IsEnabled = false;
-            await Task.Run(() => parseBinFile(fn));
+            try
+            {
+                await Task.Run(() => parseBinFile(fn));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "An error happened while trying to parse the NBA 2K Audio file.\n\n" + ex.Message,
+                    App.AppName,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
             await Task.Run(() => parseSongs());
 
             refreshMatchingSongs();
@@ -560,9 +586,21 @@
 
             var song = (Song) dgSongs.SelectedItem;
 
-            using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
+            try
             {
-                exportSong(song, fn, br);
+                using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
+                {
+                    exportSong(song, fn, br);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "An error happened while trying to export the segment.\n\n" + ex.Message,
+                    App.AppName,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
             }
 
             MessageBox.Show("Audio segment exported to " + fn + ".");
@@ -698,22 +736,36 @@
             IsEnabled = false;
             stiStatus.Content = "Please wait (0% completed)...";
             var oldPerc = 0;
-            using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
+            try
             {
-                for (int i = 0; i < _allSongs.Count; i++)
+                using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
                 {
-                    var perc = (int) (i * 100.0 / _allSongs.Count);
-                    if (perc != oldPerc)
+                    for (int i = 0; i < _allSongs.Count; i++)
                     {
-                        oldPerc = perc;
-                        stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc);
+                        var perc = (int) (i * 100.0 / _allSongs.Count);
+                        if (perc != oldPerc)
+                        {
+                            oldPerc = perc;
+                            stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc);
+                        }
+                        var song = _allSongs[i];
+                        var fn = String.Format(
+                            "{0}_{1:000000}.dat",
+                            Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn),
+                            song.ID);
+                        var srcFile = txtJukeboxFile.Text;
+                        await Task.Run(() => exportSong(song, fn, br));
                     }
-                    var song = _allSongs[i];
-                    var fn = String.Format(
-                        "{0}_{1:000000}.dat", Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn), song.ID);
-                    var srcFile = txtJukeboxFile.Text;
-                    await Task.Run(() => exportSong(song, fn, br));
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "An error happened while trying to export the segments.\n\n" + ex.Message,
+                    App.AppName,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
             }
             IsEnabled = true;
             stiStatus.Content = "Ready";
