@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
         <Button x:Name="btnReplaceSong" Content="Replace Audio Segment" HorizontalAlignment="Left" Margin="10,0,0,10"
                 VerticalAlignment="Bottom" Width="149" Click="btnReplaceSong_Click" FontWeight="Bold" />
-        <TextBlock HorizontalAlignment="Left" Margin="10,13,0,0" TextWrapping="Wrap" Text="Song File"
+        <TextBlock HorizontalAlignment="Left" Margin="10,13,0,0" TextWrapping="Wrap" Text="User Audio File"
                    VerticalAlignment="Top" />
         <TextBox x:Name="txtSongFile" Height="23" Margin="127,10,90,0" VerticalAlignment="Top" IsReadOnly="True"
                  TextChanged="txtSongFile_TextChanged" />

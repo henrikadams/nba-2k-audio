@@ -222,11 +222,19 @@
                     var args = "\"" + ofd.FileName + "\" \"" + tempWavePath + "\" remix 2 rate 44100"; */
                     var command = "\"" + Directory.GetCurrentDirectory() + "\\Sox\\sox.exe\"";
                     var args = "\"" + ofd.FileName + "\" -t wav \"" + tempWavePath + "\" rate 44100";
-                    var p = Process.Start(new ProcessStartInfo(command, args));
-                    p.WaitForExit();
+                    try
+                    {
+                        var p = Process.Start(new ProcessStartInfo(command, args));
+                        p.WaitForExit();
 
-                    WavToxWMADat(tempWavePath, datFilePath);
-                    File.Delete(tempWavePath);
+                        WavToxWMADat(tempWavePath, datFilePath);
+                        File.Delete(tempWavePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessageBox("An error occured while trying to convert the user audio file.", ex);
+                        return;
+                    }
                     userSongData = new MemoryStream(File.ReadAllBytes(datFilePath));
                     txtSongFile.Text = datFilePath;
                 }
@@ -252,7 +260,15 @@
 
                 if (!done)
                 {
-                    WavToxWMADat(fn, datFilePath);
+                    try
+                    {
+                        WavToxWMADat(fn, datFilePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessageBox("An error occured while trying to convert the user audio file.", ex);
+                        return;
+                    }
                     userSongData = new MemoryStream(File.ReadAllBytes(datFilePath));
                     txtSongFile.Text = datFilePath;
                 }
@@ -351,11 +367,7 @@
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    "An error happened while trying to parse the NBA 2K Audio file.\n\n" + ex.Message,
-                    App.AppName,
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                errorMessageBox("An error happened while trying to parse the NBA 2K Audio file.", ex);
                 return;
             }
             await Task.Run(() => parseSongs());
@@ -363,6 +375,11 @@
             refreshMatchingSongs();
             dgSongs.ItemsSource = _matchingSongs;
             IsEnabled = true;
+        }
+
+        private static void errorMessageBox(string msg, Exception ex)
+        {
+            MessageBox.Show(msg + "\n\n" + ex.Message, App.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private void txtSongFile_TextChanged(object sender, TextChangedEventArgs e)
