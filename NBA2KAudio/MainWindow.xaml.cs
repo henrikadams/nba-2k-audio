@@ -5,9 +5,12 @@
     using System;
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
+    using System.ComponentModel;
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
+    using System.Net;
+    using System.Reflection;
     using System.Threading.Tasks;
     using System.Windows;
     using System.Windows.Controls;
@@ -29,6 +32,7 @@
         private readonly List<long> _curSongOffsets;
         private long _curFileLength;
         private long _userSongLength;
+        private static string _updateFileLocalPath = App.AppDocsPath + @"audversion.txt";
 
         public MainWindow()
         {
@@ -157,6 +161,10 @@
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             stiStatus.Content = "Ready";
+
+            var w = new BackgroundWorker();
+            w.DoWork += (o, args) => CheckForUpdates();
+            w.RunWorkerAsync();
         }
 
         private void btnSelectSong_Click(object sender, RoutedEventArgs e)
@@ -490,6 +498,128 @@
                     Console.WriteLine("Exception " + ex.Message + " thrown while trying to delete a file from the song cache.");
                 }
             }
+        }
+
+        private void btnExport_Click(object sender, RoutedEventArgs e)
+        {
+            if (String.IsNullOrWhiteSpace(txtJukeboxFile.Text) || dgSongs.SelectedItems.Count != 1)
+            {
+                return;
+            }
+
+            var sfd = new SaveFileDialog();
+            sfd.InitialDirectory = App.AppDocsPath;
+            sfd.Filter = "xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+
+            if (sfd.ShowDialog() == false)
+            {
+                return;
+            }
+
+            var fn = sfd.FileName;
+
+            var song = (Song)dgSongs.SelectedItem;
+
+            var buf = new byte[ChunkSize];
+            var data = new List<byte>();
+            var ms = new MemoryStream(File.ReadAllBytes(txtJukeboxFile.Text));
+            ms.Position = song.Offset;
+            for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
+            {
+                ms.Position += 96;
+                var chunkLen = getChunkLength(i);
+                ms.Read(buf, 0, (int)chunkLen);
+                data.AddRange(buf.Take((int)chunkLen));
+            }
+
+            File.WriteAllBytes(fn, data.ToArray());
+
+            MessageBox.Show("Audio segment exported to " + fn + ".");
+        }/// <summary>
+        ///     Checks for software updates asynchronously.
+        /// </summary>
+        /// <param name="showMessage">
+        ///     if set to <c>true</c>, a message will be shown even if no update is found.
+        /// </param>
+        public static void CheckForUpdates(bool showMessage = false)
+        {
+            //showUpdateMessage = showMessage;
+            try
+            {
+                var webClient = new WebClient();
+                string updateUri = "http://www.nba-live.com/leftos/audversion.txt";
+                if (!showMessage)
+                {
+                    webClient.DownloadFileCompleted += CheckForUpdatesCompleted;
+                    webClient.DownloadFileAsync(new Uri(updateUri), _updateFileLocalPath);
+                }
+                else
+                {
+                    webClient.DownloadFile(new Uri(updateUri), _updateFileLocalPath);
+                    CheckForUpdatesCompleted(null, null);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        /// <summary>
+        ///     Checks the downloaded version file to see if there's a newer version, and displays a message if needed.
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">
+        ///     The <see cref="AsyncCompletedEventArgs" /> instance containing the event data.
+        /// </param>
+        private static void CheckForUpdatesCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            string[] updateInfo;
+            string[] versionParts;
+            try
+            {
+                updateInfo = File.ReadAllLines(_updateFileLocalPath);
+                versionParts = updateInfo[0].Split('.');
+            }
+            catch
+            {
+                return;
+            }
+            string[] curVersionParts = Assembly.GetExecutingAssembly().GetName().Version.ToString().Split('.');
+            var iVP = new int[versionParts.Length];
+            var iCVP = new int[versionParts.Length];
+            for (int i = 0; i < versionParts.Length; i++)
+            {
+                iVP[i] = Convert.ToInt32(versionParts[i]);
+                iCVP[i] = Convert.ToInt32(curVersionParts[i]);
+                if (iCVP[i] > iVP[i])
+                    break;
+                if (iVP[i] > iCVP[i])
+                {
+                    string changelog = "\n\nVersion " + String.Join(".", versionParts);
+                    try
+                    {
+                        for (int j = 2; j < updateInfo.Length; j++)
+                        {
+                            changelog += "\n" + updateInfo[j].Replace('\t', ' ');
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    MessageBoxResult mbr = MessageBox.Show("A new version is available! Would you like to download it?" + changelog,
+                                                           App.AppName, MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    if (mbr == MessageBoxResult.Yes)
+                    {
+                        Process.Start(updateInfo[1]);
+                        break;
+                    }
+                    return;
+                }
+            }
+            /*
+            if (showUpdateMessage)
+                MessageBox.Show("No updates found!");
+            */
         }
     }
 }

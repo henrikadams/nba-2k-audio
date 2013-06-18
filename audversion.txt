@@ -1,5 +1,5 @@
-﻿NBA 2K Audio Editor
-	What's New
+0.3.0.0
+http://forums.nba-live.com/downloads.php?view=detail&df_id=5116
 
 	v0.3
 		- Addition: Ability to export audio segments from BIN files (for backup purposes, or to copy/move a segment to another part of the file)
@@ -9,6 +9,3 @@
 		- Addition: Ability to save and load descriptions for audio segments
 		- Addition: Added button to clear song cache
 		- Improvement: Various minor improvements and fixes
-
-	v0.1
-		- Initial release
