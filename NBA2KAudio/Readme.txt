@@ -1,8 +1,8 @@
 ﻿NBA 2K Audio Editor
-	by Lefteris "Leftos" Aslanoglou and ness24
+	by Lefteris "Leftos" Aslanoglou and nesa24
 
 	Quick Notes
-		With the amazing research and perseverance shown by ness24 from the NLSC forums in figuring out NBA 2K's audio format, I was able to build this tool to allow us to edit the audio files of NBA 2K.
+		With the amazing research and perseverance shown by nesa24 from the NLSC forums in figuring out NBA 2K's audio format, I was able to build this tool to allow us to edit the audio files of NBA 2K.
 
 
 	Features
@@ -27,12 +27,12 @@
 
 
 	Credits
-	    - ness24, for his research and his dedication to getting the information required for this project to become a reality
-		- All of the NLSC community, especially users that helped ness24 with the research, and everyone that keeps supporting the modders and tool developers
+	    - nesa24, for his research and his dedication to getting the information required for this project to become a reality
+		- All of the NLSC community, especially users that helped nesa24 with the research, and everyone that keeps supporting the modders and tool developers
 
 
 	License
-		Copyright 2013 Eleftherios Aslanoglou & ness24
+		Copyright 2013 Eleftherios Aslanoglou & nesa24
 
 		Licensed under the Apache License, Version 2.0 (the "License");
 		you may not use this file except in compliance with the License.

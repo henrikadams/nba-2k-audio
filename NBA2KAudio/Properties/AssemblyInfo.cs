@@ -17,7 +17,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("NBA 2K Audio Editor")]
-[assembly: AssemblyCopyright("Copyright © Eleftherios Aslanoglou & ness24 2013")]
+[assembly: AssemblyCopyright("Copyright © Eleftherios Aslanoglou & nesa24 2013")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

@@ -780,5 +780,12 @@
             <param name="incomingString">The source string.</param>
             <returns></returns>
         </member>
+        <member name="M:LeftosCommonLibrary.Tools.AppInvoke(System.Action)">
+            <summary>
+            Invokes an action to happen in the application's dispatcher. Can be used by threads that aren't the UI one
+            to be run on the UI.
+            </summary>
+            <param name="a">The action to be invoked.</param>
+        </member>
     </members>
 </doc>

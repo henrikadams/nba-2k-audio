@@ -18,8 +18,18 @@
 
 namespace NBA2KAudio
 {
-    public class Song
+    #region Using Directives
+
+    using System.ComponentModel;
+    using System.Runtime.CompilerServices;
+
+    using NBA2KAudio.Annotations;
+
+    #endregion
+
+    public class Song : INotifyPropertyChanged
     {
+        private string _description;
         public int ID { get; set; }
         public long Offset { get; set; }
         public int ChunkCount { get; set; }
@@ -27,5 +37,31 @@ namespace NBA2KAudio
         public int FirstChunkID { get; set; }
         public int LastChunkID { get; set; }
         public double Duration { get; set; }
+
+        public string Description
+        {
+            get { return _description; }
+            set
+            {
+                _description = value;
+                OnPropertyChanged("Description");
+            }
+        }
+
+        #region INotifyPropertyChanged Members
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        #endregion
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null)
+            {
+                handler(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
     }
 }
