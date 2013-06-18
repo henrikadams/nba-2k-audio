@@ -376,8 +376,11 @@
             }
 
             Tools.AppInvoke(() => stiStatus.Content = "Please wait (0% completed)...");
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             var oldPerc = 0;
             _curFileLength = ms.Length;
+            var bigBuf = new byte[1048576];
             var headBuf = new byte[4];
             var idBuf = new byte[2];
             while (ms.Length - ms.Position > 106)
@@ -385,19 +388,49 @@
                 var curPerc = (int) (ms.Position * 100.0 / ms.Length);
                 if (curPerc != oldPerc)
                 {
+                    var timeElapsed = stopwatch.ElapsedMilliseconds;
+                    stopwatch.Reset();
+                    stopwatch.Start();
                     oldPerc = curPerc;
                     var perc = curPerc;
-                    Tools.AppInvoke(() => stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc));
+                    Tools.AppInvoke(
+                        () =>
+                        stiStatus.Content =
+                        String.Format(
+                            "Please wait ({0}% completed - ETA: {1:0} minutes, {2:0} seconds)...",
+                            perc,
+                            Math.Floor(((timeElapsed / 1000.0) * (100 - perc)) / 60),
+                            Math.Floor(((timeElapsed / 1000.0) * (100 - perc)) % 60)));
                 }
+                var bytesReadCount = ms.Read(bigBuf, 0, 1048576);
+                ms.Position -= bytesReadCount;
+                bool found = false;
+                for (int i = 0; i < bytesReadCount - 3; i++)
+                {
+                    if (bigBuf[i] == ChunkHeader[0] && bigBuf[i + 1] == ChunkHeader[1] && bigBuf[i + 2] == ChunkHeader[2]
+                        && bigBuf[i + 3] == ChunkHeader[3])
+                    {
+                        found = true;
+                        ms.Position += i;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    ms.Position += bytesReadCount >= 4 ? bytesReadCount - 3 : bytesReadCount;
+                    continue;
+                }
+                /*
                 ms.Read(headBuf, 0, 4);
                 if (!headBuf.SequenceEqual(ChunkHeader))
                 {
                     ms.Position -= 3;
                     continue;
                 }
-                _curChunkOffsets.Add(ms.Position - 4);
+                */
+                _curChunkOffsets.Add(ms.Position);
 
-                ms.Position += 32;
+                ms.Position += 36;
                 ms.Read(idBuf, 0, 2);
                 var chunkID = idBuf[1] * 256 + idBuf[0];
                 if (chunkID != 0)
@@ -418,6 +451,7 @@
                     _curSongOffsets.Add(ms.Position - 106);
                     */
             }
+            stopwatch.Stop();
 
             Tools.AppInvoke(() => stiStatus.Content = "Ready");
             Console.WriteLine(String.Format("{0} songs, {1} chunks detected.", _curSongOffsets.Count, _curChunkOffsets.Count));
@@ -670,7 +704,8 @@
                     stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc);
                 }
                 var song = _allSongs[i];
-                var fn = String.Format("{0}_{1:000000}.dat", Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn), song.ID);
+                var fn = String.Format(
+                    "{0}_{1:000000}.dat", Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn), song.ID);
                 var srcFile = txtJukeboxFile.Text;
                 await Task.Run(() => exportSong(song, fn, srcFile));
             }
