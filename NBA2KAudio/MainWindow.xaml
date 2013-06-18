@@ -49,9 +49,11 @@
         <Button x:Name="btnLoadNames" Content="Load Names" HorizontalAlignment="Right" Margin="0,0,103,10"
                 VerticalAlignment="Bottom" Width="88"
                 Click="btnLoadNames_Click" />
-        <Button x:Name="btnClearCache" Content="Clear Song Cache" HorizontalAlignment="Left" Margin="299,0,0,10"
+        <Button x:Name="btnClearCache" Content="Clear Song Cache" HorizontalAlignment="Right" Margin="0,0,196,10"
                 VerticalAlignment="Bottom" Width="118" Click="btnClearCache_Click" />
         <Button x:Name="btnExport" Content="Export Segment" HorizontalAlignment="Left" Margin="164,0,0,10"
-                VerticalAlignment="Bottom" Width="118" Click="btnExport_Click" />
+                VerticalAlignment="Bottom" Width="105" Click="btnExport_Click" />
+        <Button x:Name="btnExportAll" Content="Export All" HorizontalAlignment="Left" Margin="274,0,0,10"
+        	VerticalAlignment="Bottom" Width="105" Click="btnExportAll_Click" />
     </Grid>
 </Window>

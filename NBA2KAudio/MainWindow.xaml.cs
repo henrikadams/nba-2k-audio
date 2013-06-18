@@ -317,8 +317,7 @@
         private async void btnSelectJukebox_Click(object sender, RoutedEventArgs e)
         {
             var ofd = new OpenFileDialog();
-            ofd.Filter =
-                "NBA 2K Jukebox Music Files (jukeboxmusic.bin)|jukeboxmusic.bin|NBA 2K Audio Files (*.bin)|*.bin|All Files (*.*)|*.*";
+            ofd.Filter = "NBA 2K Jukebox Music Files|jukeboxmusic.bin|NBA 2K Audio Files (*.bin)|*.bin|All Files (*.*)|*.*";
             ofd.InitialDirectory = Tools.GetRegistrySetting("LastJukeboxPath", "");
 
             if (ofd.ShowDialog() == false)
@@ -365,43 +364,51 @@
             _curChunkOffsets.Clear();
             _curSongOffsets.Clear();
 
-            using (var ms = new MemoryStream(File.ReadAllBytes(fn)))
-            {
-                var chunkID = 0;
-                var curPerc = 0;
-                var oldPerc = 0;
-                _curFileLength = ms.Length;
-                var headBuf = new byte[4];
-                var idBuf = new byte[2];
-                while (ms.Length - ms.Position > 106)
-                {
-                    curPerc = (int) (ms.Position * 100.0 / ms.Length);
-                    if (curPerc != oldPerc)
-                    {
-                        oldPerc = curPerc;
-                        var perc = curPerc;
-                        Tools.AppInvoke(() => stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc));
-                    }
-                    ms.Read(headBuf, 0, 4);
-                    if (!headBuf.SequenceEqual(ChunkHeader))
-                    {
-                        ms.Position -= 3;
-                        continue;
-                    }
-                    _curChunkOffsets.Add(ms.Position - 4);
+            Stream ms;
 
-                    ms.Position += 32;
-                    ms.Read(idBuf, 0, 2);
-                    chunkID = idBuf[1] * 256 + idBuf[0];
-                    if (chunkID != 0)
-                    {
-                        continue;
-                    }
-                    _curSongOffsets.Add(ms.Position - 38);
-                    
-                    // The method below for detecting files works for most files, but not all, so it's replaced with the 
-                    // code above
-                    /*
+            if (new FileInfo(fn).Length > 262144000)
+            {
+                ms = new FileStream(fn, FileMode.Open, FileAccess.Read);
+            }
+            else
+            {
+                ms = new MemoryStream(File.ReadAllBytes(fn));
+            }
+
+            Tools.AppInvoke(() => stiStatus.Content = "Please wait (0% completed)...");
+            var oldPerc = 0;
+            _curFileLength = ms.Length;
+            var headBuf = new byte[4];
+            var idBuf = new byte[2];
+            while (ms.Length - ms.Position > 106)
+            {
+                var curPerc = (int) (ms.Position * 100.0 / ms.Length);
+                if (curPerc != oldPerc)
+                {
+                    oldPerc = curPerc;
+                    var perc = curPerc;
+                    Tools.AppInvoke(() => stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc));
+                }
+                ms.Read(headBuf, 0, 4);
+                if (!headBuf.SequenceEqual(ChunkHeader))
+                {
+                    ms.Position -= 3;
+                    continue;
+                }
+                _curChunkOffsets.Add(ms.Position - 4);
+
+                ms.Position += 32;
+                ms.Read(idBuf, 0, 2);
+                var chunkID = idBuf[1] * 256 + idBuf[0];
+                if (chunkID != 0)
+                {
+                    continue;
+                }
+                _curSongOffsets.Add(ms.Position - 38);
+
+                // The method below for detecting files works for most files, but not all, so it's replaced with the 
+                // code above
+                /*
                     ms.Position += 98;
                     ms.Read(headBuf, 0, 4);
                     if (!headBuf.SequenceEqual(SongHeader))
@@ -410,7 +417,6 @@
                     }
                     _curSongOffsets.Add(ms.Position - 106);
                     */
-                }
             }
 
             Tools.AppInvoke(() => stiStatus.Content = "Ready");
@@ -518,24 +524,33 @@
 
             var fn = sfd.FileName;
 
-            var song = (Song)dgSongs.SelectedItem;
+            var song = (Song) dgSongs.SelectedItem;
 
-            var buf = new byte[ChunkSize];
-            var data = new List<byte>();
-            var ms = new MemoryStream(File.ReadAllBytes(txtJukeboxFile.Text));
-            ms.Position = song.Offset;
-            for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
-            {
-                ms.Position += 96;
-                var chunkLen = getChunkLength(i);
-                ms.Read(buf, 0, (int)chunkLen);
-                data.AddRange(buf.Take((int)chunkLen));
-            }
-
-            File.WriteAllBytes(fn, data.ToArray());
+            exportSong(song, fn, txtJukeboxFile.Text);
 
             MessageBox.Show("Audio segment exported to " + fn + ".");
-        }/// <summary>
+        }
+
+        private void exportSong(Song song, string destFn, string srcFile)
+        {
+            var buf = new byte[ChunkSize];
+            var data = new List<byte>();
+            using (var ms = new MemoryStream(File.ReadAllBytes(srcFile)))
+            {
+                ms.Position = song.Offset;
+                for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
+                {
+                    ms.Position += 96;
+                    var chunkLen = getChunkLength(i);
+                    ms.Read(buf, 0, (int) chunkLen);
+                    data.AddRange(buf.Take((int) chunkLen));
+                }
+            }
+
+            File.WriteAllBytes(destFn, data.ToArray());
+        }
+
+        /// <summary>
         ///     Checks for software updates asynchronously.
         /// </summary>
         /// <param name="showMessage">
@@ -592,7 +607,9 @@
                 iVP[i] = Convert.ToInt32(versionParts[i]);
                 iCVP[i] = Convert.ToInt32(curVersionParts[i]);
                 if (iCVP[i] > iVP[i])
+                {
                     break;
+                }
                 if (iVP[i] > iCVP[i])
                 {
                     string changelog = "\n\nVersion " + String.Join(".", versionParts);
@@ -606,8 +623,11 @@
                     catch
                     {
                     }
-                    MessageBoxResult mbr = MessageBox.Show("A new version is available! Would you like to download it?" + changelog,
-                                                           App.AppName, MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    MessageBoxResult mbr = MessageBox.Show(
+                        "A new version is available! Would you like to download it?" + changelog,
+                        App.AppName,
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
                     if (mbr == MessageBoxResult.Yes)
                     {
                         Process.Start(updateInfo[1]);
@@ -620,6 +640,43 @@
             if (showUpdateMessage)
                 MessageBox.Show("No updates found!");
             */
+        }
+
+        private async void btnExportAll_Click(object sender, RoutedEventArgs e)
+        {
+            if (String.IsNullOrWhiteSpace(txtJukeboxFile.Text))
+            {
+                return;
+            }
+
+            var sfd = new SaveFileDialog();
+            sfd.InitialDirectory = App.AppDocsPath;
+            sfd.Filter = "xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            sfd.Title = "Select a folder and base filename";
+
+            if (sfd.ShowDialog() == false)
+            {
+                return;
+            }
+
+            var baseFn = sfd.FileName;
+
+            var oldPerc = 0;
+            for (int i = 0; i < _allSongs.Count; i++)
+            {
+                var perc = (int) (i * 100.0 / _allSongs.Count);
+                if (perc != oldPerc)
+                {
+                    stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc);
+                }
+                var song = _allSongs[i];
+                var fn = String.Format("{0}_{1:000000}.dat", Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn), song.ID);
+                var srcFile = txtJukeboxFile.Text;
+                await Task.Run(() => exportSong(song, fn, srcFile));
+            }
+
+            stiStatus.Content = "Ready";
+            MessageBox.Show("Audio segments exported to " + Path.GetDirectoryName(baseFn) + ".");
         }
     }
 }
