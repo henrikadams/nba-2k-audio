@@ -560,25 +560,25 @@
 
             var song = (Song) dgSongs.SelectedItem;
 
-            exportSong(song, fn, txtJukeboxFile.Text);
+            using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
+            {
+                exportSong(song, fn, br);
+            }
 
             MessageBox.Show("Audio segment exported to " + fn + ".");
         }
 
-        private void exportSong(Song song, string destFn, string srcFile)
+        private void exportSong(Song song, string destFn, BinaryReader br)
         {
             var buf = new byte[ChunkSize];
             var data = new List<byte>();
-            using (var ms = new MemoryStream(File.ReadAllBytes(srcFile)))
+            br.BaseStream.Position = song.Offset;
+            for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
             {
-                ms.Position = song.Offset;
-                for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
-                {
-                    ms.Position += 96;
-                    var chunkLen = getChunkLength(i);
-                    ms.Read(buf, 0, (int) chunkLen);
-                    data.AddRange(buf.Take((int) chunkLen));
-                }
+                br.BaseStream.Position += 96;
+                var chunkLen = getChunkLength(i);
+                br.Read(buf, 0, (int) chunkLen);
+                data.AddRange(buf.Take((int) chunkLen));
             }
 
             File.WriteAllBytes(destFn, data.ToArray());
@@ -695,21 +695,27 @@
 
             var baseFn = sfd.FileName;
 
+            IsEnabled = false;
+            stiStatus.Content = "Please wait (0% completed)...";
             var oldPerc = 0;
-            for (int i = 0; i < _allSongs.Count; i++)
+            using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
             {
-                var perc = (int) (i * 100.0 / _allSongs.Count);
-                if (perc != oldPerc)
+                for (int i = 0; i < _allSongs.Count; i++)
                 {
-                    stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc);
+                    var perc = (int) (i * 100.0 / _allSongs.Count);
+                    if (perc != oldPerc)
+                    {
+                        oldPerc = perc;
+                        stiStatus.Content = String.Format("Please wait ({0}% completed)...", perc);
+                    }
+                    var song = _allSongs[i];
+                    var fn = String.Format(
+                        "{0}_{1:000000}.dat", Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn), song.ID);
+                    var srcFile = txtJukeboxFile.Text;
+                    await Task.Run(() => exportSong(song, fn, br));
                 }
-                var song = _allSongs[i];
-                var fn = String.Format(
-                    "{0}_{1:000000}.dat", Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn), song.ID);
-                var srcFile = txtJukeboxFile.Text;
-                await Task.Run(() => exportSong(song, fn, srcFile));
             }
-
+            IsEnabled = true;
             stiStatus.Content = "Ready";
             MessageBox.Show("Audio segments exported to " + Path.GetDirectoryName(baseFn) + ".");
         }

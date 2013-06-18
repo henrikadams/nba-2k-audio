@@ -3,6 +3,7 @@
 
 	v0.4
 		- Addition: Ability to export all audio segments from a BIN file at once
+		- Improvement: BIN file loading times decreased a lot
 		- Fix: The tool will no longer attempt to load files larger than 250MB into memory which lead to a crash
 
 	v0.3
