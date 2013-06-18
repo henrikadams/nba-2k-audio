@@ -1,5 +1,11 @@
 ﻿NBA 2K Audio Editor
 	What's New
 
+	v0.2
+		- Addition: All NBA 2K BIN Audio files that are of similar format are now compatible
+		- Addition: Ability to save and load descriptions for audio segments
+		- Addition: Added button to clear song cache
+		- Improvement: Various minor improvements and fixes
+
 	v0.1
 		- Initial release

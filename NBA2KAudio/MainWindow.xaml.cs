@@ -111,7 +111,7 @@
             bw.Close();
             ms.Close();
 
-            MessageBox.Show("Song replaced!");
+            MessageBox.Show("Song/audio segment replaced!");
         }
 
         private void parseSongs()
