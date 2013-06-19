@@ -32,7 +32,7 @@
         private readonly List<long> _curSongOffsets;
         private long _curFileLength;
         private long _userSongLength;
-        private static string _updateFileLocalPath = App.AppDocsPath + @"audversion.txt";
+        private static readonly string _updateFileLocalPath = App.AppDocsPath + @"audversion.txt";
 
         public MainWindow()
         {
@@ -363,14 +363,14 @@
             IsEnabled = false;
             try
             {
-                await Task.Run(() => parseBinFile(fn));
+                await TaskEx.Run(() => parseBinFile(fn));
             }
             catch (Exception ex)
             {
                 errorMessageBox("An error happened while trying to parse the NBA 2K Audio file.", ex);
                 return;
             }
-            await Task.Run(() => parseSongs());
+            await TaskEx.Run(() => parseSongs());
 
             refreshMatchingSongs();
             dgSongs.ItemsSource = _matchingSongs;
@@ -770,8 +770,7 @@
                             "{0}_{1:000000}.dat",
                             Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn),
                             song.ID);
-                        var srcFile = txtJukeboxFile.Text;
-                        await Task.Run(() => exportSong(song, fn, br));
+                        await TaskEx.Run(() => exportSong(song, fn, br));
                     }
                 }
             }
