@@ -1,11 +1,7 @@
-0.3.0.0
+0.3.1.0
 http://forums.nba-live.com/downloads.php?view=detail&df_id=5116
 
-	v0.3
-		- Addition: Ability to export audio segments from BIN files (for backup purposes, or to copy/move a segment to another part of the file)
-
-	v0.2
-		- Addition: All NBA 2K BIN Audio files that are of similar format are now compatible
-		- Addition: Ability to save and load descriptions for audio segments
-		- Addition: Added button to clear song cache
-		- Improvement: Various minor improvements and fixes
+	v0.3.1
+		- Addition: Ability to export all audio segments from a BIN file at once
+		- Improvement: BIN file loading times decreased a lot
+		- Fix: The tool will no longer attempt to load files larger than 250MB into memory which lead to a crash

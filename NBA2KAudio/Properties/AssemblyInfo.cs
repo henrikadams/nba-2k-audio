@@ -57,4 +57,4 @@ using System.Windows;
 
 #endregion
 
-[assembly: AssemblyVersion("0.3.0.0")]
+[assembly: AssemblyVersion("0.3.1.0")]

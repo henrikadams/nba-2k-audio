@@ -1,7 +1,7 @@
 ﻿NBA 2K Audio Editor
 	What's New
 
-	v0.4
+	v0.3.1
 		- Addition: Ability to export all audio segments from a BIN file at once
 		- Improvement: BIN file loading times decreased a lot
 		- Fix: The tool will no longer attempt to load files larger than 250MB into memory which lead to a crash
