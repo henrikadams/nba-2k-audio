@@ -9,7 +9,6 @@
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
-    using System.Media;
     using System.Net;
     using System.Reflection;
     using System.Threading.Tasks;
@@ -30,18 +29,18 @@
         private const int ChunkBufferSize = 25000;
         private static readonly byte[] ChunkHeader = new byte[] { 105, 161, 190, 210 };
         private static readonly byte[] StereoHeader = new byte[] { 42, 49, 115, 98 };
+        private static readonly string UpdateFileLocalPath = App.AppDocsPath + @"audversion.txt";
 
         private readonly List<long> _curChunkOffsets;
         private readonly List<long> _curSongOffsets;
-        private long _curFileLength;
-        private long _userSongLength;
-        private static readonly string UpdateFileLocalPath = App.AppDocsPath + @"audversion.txt";
-        private WaveFileReader _wfr;
-        private WaveChannel32 _wc;
         private DirectSoundOut _audioOutput;
-        private string _playbackFn = "";
-        private int _curPlayingID;
         private int _curChannels;
+        private long _curFileLength;
+        private int _curPlayingID;
+        private string _playbackFn = "";
+        private long _userSongLength;
+        private WaveChannel32 _wc;
+        private WaveFileReader _wfr;
 
         public MainWindow()
         {
@@ -428,7 +427,7 @@
             {
                 ms = new MemoryStream(File.ReadAllBytes(fn));
             }
-            
+
             var headBuf = new byte[4];
             ms.Position = 102;
             var monoHeader = new byte[] { 8, 220, 66, 64 };
@@ -463,8 +462,8 @@
                 }
                 var bytesReadCount = ms.Read(bigBuf, 0, 1048576);
                 ms.Position -= bytesReadCount;
-                bool found = false;
-                for (int i = 0; i < bytesReadCount - 3; i++)
+                var found = false;
+                for (var i = 0; i < bytesReadCount - 3; i++)
                 {
                     if (bigBuf[i] == ChunkHeader[0] && bigBuf[i + 1] == ChunkHeader[1] && bigBuf[i + 2] == ChunkHeader[2]
                         && bigBuf[i + 3] == ChunkHeader[3])
@@ -670,9 +669,7 @@
             return data.ToArray();
         }
 
-        /// <summary>
-        ///     Checks for software updates asynchronously.
-        /// </summary>
+        /// <summary>Checks for software updates asynchronously.</summary>
         /// <param name="showMessage">
         ///     if set to <c>true</c>, a message will be shown even if no update is found.
         /// </param>
@@ -682,7 +679,7 @@
             try
             {
                 var webClient = new WebClient();
-                string updateUri = "http://www.nba-live.com/leftos/audversion.txt";
+                var updateUri = "http://www.nba-live.com/leftos/audversion.txt";
                 if (!showMessage)
                 {
                     webClient.DownloadFileCompleted += CheckForUpdatesCompleted;
@@ -699,9 +696,7 @@
             }
         }
 
-        /// <summary>
-        ///     Checks the downloaded version file to see if there's a newer version, and displays a message if needed.
-        /// </summary>
+        /// <summary>Checks the downloaded version file to see if there's a newer version, and displays a message if needed.</summary>
         /// <param name="sender">The sender.</param>
         /// <param name="e">
         ///     The <see cref="AsyncCompletedEventArgs" /> instance containing the event data.
@@ -719,10 +714,10 @@
             {
                 return;
             }
-            string[] curVersionParts = Assembly.GetExecutingAssembly().GetName().Version.ToString().Split('.');
+            var curVersionParts = Assembly.GetExecutingAssembly().GetName().Version.ToString().Split('.');
             var iVP = new int[versionParts.Length];
             var iCVP = new int[versionParts.Length];
-            for (int i = 0; i < versionParts.Length; i++)
+            for (var i = 0; i < versionParts.Length; i++)
             {
                 iVP[i] = Convert.ToInt32(versionParts[i]);
                 iCVP[i] = Convert.ToInt32(curVersionParts[i]);
@@ -732,10 +727,10 @@
                 }
                 if (iVP[i] > iCVP[i])
                 {
-                    string changelog = "\n\nVersion " + String.Join(".", versionParts);
+                    var changelog = "\n\nVersion " + String.Join(".", versionParts);
                     try
                     {
-                        for (int j = 2; j < updateInfo.Length; j++)
+                        for (var j = 2; j < updateInfo.Length; j++)
                         {
                             changelog += "\n" + updateInfo[j].Replace('\t', ' ');
                         }
@@ -743,7 +738,7 @@
                     catch
                     {
                     }
-                    MessageBoxResult mbr = MessageBox.Show(
+                    var mbr = MessageBox.Show(
                         "A new version is available! Would you like to download it?" + changelog,
                         App.AppName,
                         MessageBoxButton.YesNo,
@@ -790,7 +785,7 @@
             {
                 using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
                 {
-                    for (int i = 0; i < _allSongs.Count; i++)
+                    for (var i = 0; i < _allSongs.Count; i++)
                     {
                         var perc = (int) (i * 100.0 / _allSongs.Count);
                         if (perc != oldPerc)

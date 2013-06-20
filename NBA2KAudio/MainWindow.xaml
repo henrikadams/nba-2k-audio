@@ -54,10 +54,10 @@
         <Button x:Name="btnExport" Content="Export Segment" HorizontalAlignment="Left" Margin="164,0,0,10"
                 VerticalAlignment="Bottom" Width="105" Click="btnExport_Click" />
         <Button x:Name="btnExportAll" Content="Export All" HorizontalAlignment="Left" Margin="274,0,0,10"
-        	VerticalAlignment="Bottom" Width="105" Click="btnExportAll_Click" />
+                VerticalAlignment="Bottom" Width="105" Click="btnExportAll_Click" />
         <Button x:Name="btnPlay" Content="Play" HorizontalAlignment="Right" Margin="0,0,103,37"
-        	VerticalAlignment="Bottom" Width="88" Click="btnPlay_Click" />
+                VerticalAlignment="Bottom" Width="88" Click="btnPlay_Click" />
         <Button x:Name="btnStop" Content="Stop" HorizontalAlignment="Right" Margin="0,0,10,37"
-        	VerticalAlignment="Bottom" Width="88" Click="btnStop_Click" />
+                VerticalAlignment="Bottom" Width="88" Click="btnStop_Click" />
     </Grid>
 </Window>
