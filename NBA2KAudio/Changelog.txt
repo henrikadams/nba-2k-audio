@@ -1,5 +1,8 @@
 ﻿NBA 2K Audio Editor
 	What's New
+
+	v0.4.1
+		- Improvement: Improved playing & exporting compatibility to include mono files
 	
 	v0.4
 		- Addition: Ability to play audio segments inside the .BIN files (not all .BIN files are playable yet)

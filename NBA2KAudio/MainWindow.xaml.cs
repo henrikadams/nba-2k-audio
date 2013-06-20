@@ -27,9 +27,9 @@
     /// <summary>Interaction logic for MainWindow.xaml</summary>
     public partial class MainWindow : Window
     {
-        private const int ChunkSize = 14946;
+        private const int ChunkBufferSize = 25000;
         private static readonly byte[] ChunkHeader = new byte[] { 105, 161, 190, 210 };
-        private static readonly byte[] SongHeader = new byte[] { 42, 49, 115, 98 };
+        private static readonly byte[] StereoHeader = new byte[] { 42, 49, 115, 98 };
 
         private readonly List<long> _curChunkOffsets;
         private readonly List<long> _curSongOffsets;
@@ -41,6 +41,7 @@
         private DirectSoundOut _audioOutput;
         private string _playbackFn = "";
         private int _curPlayingID;
+        private int _curChannels;
 
         public MainWindow()
         {
@@ -98,8 +99,8 @@
             var bytesWritten = 0;
             for (var i = songToReplace.FirstChunkID; i <= songToReplace.LastChunkID; i++)
             {
-                var buf = new byte[ChunkSize];
-                for (var j = 0; j < ChunkSize; j++)
+                var buf = new byte[ChunkBufferSize];
+                for (var j = 0; j < ChunkBufferSize; j++)
                 {
                     buf[j] = 0;
                 }
@@ -427,6 +428,12 @@
             {
                 ms = new MemoryStream(File.ReadAllBytes(fn));
             }
+            
+            var headBuf = new byte[4];
+            ms.Position = 102;
+            var monoHeader = new byte[] { 8, 220, 66, 64 };
+            ms.Read(headBuf, 0, 4);
+            _curChannels = !headBuf.SequenceEqual(StereoHeader) ? 1 : 2;
 
             Tools.AppInvoke(() => stiStatus.Content = "Please wait (0% completed)...");
             var stopwatch = new Stopwatch();
@@ -434,7 +441,6 @@
             var oldPerc = 0;
             _curFileLength = ms.Length;
             var bigBuf = new byte[1048576];
-            var headBuf = new byte[4];
             var idBuf = new byte[2];
             while (ms.Length - ms.Position > 106)
             {
@@ -651,7 +657,7 @@
 
         private byte[] extractSongData(Song song, BinaryReader br)
         {
-            var buf = new byte[ChunkSize];
+            var buf = new byte[ChunkBufferSize];
             var data = new List<byte>();
             br.BaseStream.Position = song.Offset;
             for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
@@ -904,7 +910,7 @@
         {
             var data = extractSongData(song, br);
             var tempFn = Path.GetDirectoryName(wavFn) + "\\" + Path.GetFileNameWithoutExtension(wavFn) + ".xma";
-            File.Copy("audio.xma", tempFn, true);
+            File.Copy(_curChannels == 2 ? "audio.xma" : "audiom.xma", tempFn, true);
             using (var bw = new BinaryWriter(File.OpenWrite(tempFn)))
             {
                 bw.BaseStream.Position = 6518;
