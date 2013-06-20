@@ -70,8 +70,8 @@
                 || dgSongs.SelectedItems.Count != 1)
             {
                 MessageBox.Show(
-                    "You need to do all the following before replacing a song:\n\n" + "- Select your own song.\n"
-                    + "- Select the jukeboxmusic.bin.\n" + "- Select a song from the grid to replace.");
+                    "You need to do all the following before replacing a song:\n\n" + "- Select the audio file you want to import.\n"
+                    + "- Select the NBA 2K BIN audio file you want to import into.\n" + "- Select a song from the grid to replace.");
                 return;
             }
 
@@ -567,8 +567,8 @@
         {
             var mbr =
                 MessageBox.Show(
-                    "Any song that you select gets converted to an NBA 2K-compatible DAT file in " + App.AppDocsPath + " "
-                    + "in order to allow you to reuse it without the need to wait for it to be converted again.\n\n"
+                    "Any of your own audio files that you select gets converted to an NBA 2K-compatible DAT file in " + App.AppDocsPath
+                    + " in order to allow you to reuse it without the need to wait for it to be converted again.\n\n"
                     + "Would you like to delete all converted files?\nThis will not affect your original MP3/WAV files.",
                     App.AppName,
                     MessageBoxButton.YesNo,
@@ -593,7 +593,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Exception " + ex.Message + " thrown while trying to delete a file from the song cache.");
+                    Console.WriteLine("Exception thrown while trying to delete a file from the song cache: {0}", ex.Message);
                 }
             }
         }
@@ -845,7 +845,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Could not delete file " + _playbackFn + ": " + ex.Message);
+                    Console.WriteLine("Could not delete file {0}: {1}", _playbackFn, ex.Message);
                 }
 
                 var jukeboxFile = txtJukeboxFile.Text;
@@ -874,11 +874,11 @@
 
                     _audioOutput = new DirectSoundOut();
 
+                    _audioOutput.PlaybackStopped += onPlaybackStopped;
+
                     _audioOutput.Init(_wc);
 
                     _audioOutput.Play();
-
-                    _audioOutput.PlaybackStopped += onPlaybackStopped;
                 }
                 catch (Exception ex)
                 {
