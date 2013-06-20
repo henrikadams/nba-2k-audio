@@ -1,5 +1,12 @@
 ﻿NBA 2K Audio Editor
 	What's New
+	
+	v0.4
+		- Addition: Ability to play audio segments inside the .BIN files (not all .BIN files are playable yet)
+		- Addition: Ability to export audio segments as .WAV files
+
+	v0.3.1.1
+		- Change: The tool is now targeting .NET Framework 4 in order to support Windows XP; however, error reports might be much less detailed in certain cases
 
 	v0.3.1
 		- Addition: Ability to export all audio segments from a BIN file at once

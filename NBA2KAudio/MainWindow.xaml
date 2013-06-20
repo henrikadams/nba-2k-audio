@@ -4,9 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:nba2KAudio="clr-namespace:NBA2KAudio" mc:Ignorable="d"
-        Title="NBA 2K Audio Editor - by Leftos &amp; nesa24" Height="400" Width="723" MinWidth="723"
+        Title="NBA 2K Audio Editor - by Leftos &amp; nesa24" Height="433" Width="723" MinWidth="723"
         Loaded="Window_Loaded"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen" Closing="window_Closing">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition />
@@ -22,7 +22,7 @@
                    VerticalAlignment="Top" />
         <TextBox x:Name="txtJukeboxFile" Height="23" Margin="127,38,90,0" VerticalAlignment="Top" IsReadOnly="True"
                  TextChanged="txtJukeboxFile_TextChanged" />
-        <DataGrid x:Name="dgSongs" Margin="239,73,10,51" AutoGenerateColumns="False" CanUserAddRows="False"
+        <DataGrid x:Name="dgSongs" Margin="239,73,10,73" AutoGenerateColumns="False" CanUserAddRows="False"
                   CanUserDeleteRows="False" SelectionMode="Single"
                   d:DataContext="{d:DesignInstance nba2KAudio:Song}">
             <DataGrid.Columns>
@@ -36,7 +36,7 @@
                 HorizontalAlignment="Right" Width="75" Click="btnSelectSong_Click" />
         <Button x:Name="btnSelectJukebox" Content="Browse" Margin="0,38,10,0" VerticalAlignment="Top"
                 HorizontalAlignment="Right" Width="75" Click="btnSelectJukebox_Click" />
-        <GroupBox Header="Song Info" Margin="10,73,0,51" Padding="2" HorizontalAlignment="Left" Width="213">
+        <GroupBox Header="Song Info" Margin="10,73,0,73" Padding="2" HorizontalAlignment="Left" Width="213">
             <TextBlock Name="txbSongInfo" />
         </GroupBox>
         <StatusBar HorizontalAlignment="Stretch" Margin="0,0,0,0" Name="statusBar1" VerticalAlignment="Bottom"
@@ -55,5 +55,9 @@
                 VerticalAlignment="Bottom" Width="105" Click="btnExport_Click" />
         <Button x:Name="btnExportAll" Content="Export All" HorizontalAlignment="Left" Margin="274,0,0,10"
         	VerticalAlignment="Bottom" Width="105" Click="btnExportAll_Click" />
+        <Button x:Name="btnPlay" Content="Play" HorizontalAlignment="Right" Margin="0,0,103,37"
+        	VerticalAlignment="Bottom" Width="88" Click="btnPlay_Click" />
+        <Button x:Name="btnStop" Content="Stop" HorizontalAlignment="Right" Margin="0,0,10,37"
+        	VerticalAlignment="Bottom" Width="88" Click="btnStop_Click" />
     </Grid>
 </Window>

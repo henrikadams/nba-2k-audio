@@ -9,6 +9,7 @@
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
+    using System.Media;
     using System.Net;
     using System.Reflection;
     using System.Threading.Tasks;
@@ -18,6 +19,8 @@
     using LeftosCommonLibrary;
 
     using Microsoft.Win32;
+
+    using NAudio.Wave;
 
     #endregion
 
@@ -32,7 +35,12 @@
         private readonly List<long> _curSongOffsets;
         private long _curFileLength;
         private long _userSongLength;
-        private static readonly string _updateFileLocalPath = App.AppDocsPath + @"audversion.txt";
+        private static readonly string UpdateFileLocalPath = App.AppDocsPath + @"audversion.txt";
+        private WaveFileReader _wfr;
+        private WaveChannel32 _wc;
+        private DirectSoundOut _audioOutput;
+        private string _playbackFn = "";
+        private int _curPlayingID;
 
         public MainWindow()
         {
@@ -355,6 +363,8 @@
                 return;
             }
 
+            onPlaybackStopped(null, null);
+
             var fn = ofd.FileName;
 
             txtJukeboxFile.Text = fn;
@@ -592,7 +602,8 @@
 
             var sfd = new SaveFileDialog();
             sfd.InitialDirectory = App.AppDocsPath;
-            sfd.Filter = "xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            sfd.Filter = "WAV files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            sfd.AddExtension = true;
 
             if (sfd.ShowDialog() == false)
             {
@@ -600,6 +611,7 @@
             }
 
             var fn = sfd.FileName;
+            var ext = Path.GetExtension(sfd.FileName);
 
             var song = (Song) dgSongs.SelectedItem;
 
@@ -607,7 +619,14 @@
             {
                 using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
                 {
-                    exportSong(song, fn, br);
+                    if (ext == ".dat")
+                    {
+                        exportSong(song, fn, br);
+                    }
+                    else
+                    {
+                        exportSongToWav(song, br, fn);
+                    }
                 }
             }
             catch (Exception ex)
@@ -625,6 +644,13 @@
 
         private void exportSong(Song song, string destFn, BinaryReader br)
         {
+            var data = extractSongData(song, br);
+
+            File.WriteAllBytes(destFn, data);
+        }
+
+        private byte[] extractSongData(Song song, BinaryReader br)
+        {
             var buf = new byte[ChunkSize];
             var data = new List<byte>();
             br.BaseStream.Position = song.Offset;
@@ -635,8 +661,7 @@
                 br.Read(buf, 0, (int) chunkLen);
                 data.AddRange(buf.Take((int) chunkLen));
             }
-
-            File.WriteAllBytes(destFn, data.ToArray());
+            return data.ToArray();
         }
 
         /// <summary>
@@ -655,11 +680,11 @@
                 if (!showMessage)
                 {
                     webClient.DownloadFileCompleted += CheckForUpdatesCompleted;
-                    webClient.DownloadFileAsync(new Uri(updateUri), _updateFileLocalPath);
+                    webClient.DownloadFileAsync(new Uri(updateUri), UpdateFileLocalPath);
                 }
                 else
                 {
-                    webClient.DownloadFile(new Uri(updateUri), _updateFileLocalPath);
+                    webClient.DownloadFile(new Uri(updateUri), UpdateFileLocalPath);
                     CheckForUpdatesCompleted(null, null);
                 }
             }
@@ -681,7 +706,7 @@
             string[] versionParts;
             try
             {
-                updateInfo = File.ReadAllLines(_updateFileLocalPath);
+                updateInfo = File.ReadAllLines(UpdateFileLocalPath);
                 versionParts = updateInfo[0].Split('.');
             }
             catch
@@ -740,8 +765,9 @@
 
             var sfd = new SaveFileDialog();
             sfd.InitialDirectory = App.AppDocsPath;
-            sfd.Filter = "xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            sfd.Filter = "WAV files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
             sfd.Title = "Select a folder and base filename";
+            sfd.AddExtension = true;
 
             if (sfd.ShowDialog() == false)
             {
@@ -749,6 +775,7 @@
             }
 
             var baseFn = sfd.FileName;
+            var ext = Path.GetExtension(baseFn);
 
             IsEnabled = false;
             stiStatus.Content = "Please wait (0% completed)...";
@@ -767,10 +794,18 @@
                         }
                         var song = _allSongs[i];
                         var fn = String.Format(
-                            "{0}_{1:000000}.dat",
+                            "{0}_{1:000000}{2}",
                             Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn),
-                            song.ID);
-                        await TaskEx.Run(() => exportSong(song, fn, br));
+                            song.ID,
+                            ext);
+                        if (ext == ".dat")
+                        {
+                            await TaskEx.Run(() => exportSong(song, fn, br));
+                        }
+                        else
+                        {
+                            await TaskEx.Run(() => exportSongToWav(song, br, fn));
+                        }
                     }
                 }
             }
@@ -786,6 +821,139 @@
             IsEnabled = true;
             stiStatus.Content = "Ready";
             MessageBox.Show("Audio segments exported to " + Path.GetDirectoryName(baseFn) + ".");
+        }
+
+        private void btnPlay_Click(object sender, RoutedEventArgs e)
+        {
+            if (btnPlay.Content.ToString() == "Play")
+            {
+                if (_audioOutput != null && _audioOutput.PlaybackState == PlaybackState.Paused)
+                {
+                    _audioOutput.Play();
+                    btnPlay.Content = "Pause";
+                    stiStatus.Content = "Currently playing: File " + _curPlayingID;
+                    return;
+                }
+
+                try
+                {
+                    if (!String.IsNullOrWhiteSpace(_playbackFn))
+                    {
+                        File.Delete(_playbackFn);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Could not delete file " + _playbackFn + ": " + ex.Message);
+                }
+
+                var jukeboxFile = txtJukeboxFile.Text;
+                if (String.IsNullOrWhiteSpace(jukeboxFile) || dgSongs.SelectedItems.Count != 1)
+                {
+                    return;
+                }
+
+                var song = (Song) dgSongs.SelectedItem;
+                _curPlayingID = song.ID;
+
+                try
+                {
+                    var tempFn = Path.GetTempFileName();
+                    using (var br = new BinaryReader(File.OpenRead(jukeboxFile)))
+                    {
+                        _playbackFn = exportSongToWav(song, br, tempFn);
+                    }
+
+                    btnPlay.Content = "Pause";
+                    stiStatus.Content = "Currently playing: File " + _curPlayingID;
+
+                    _wfr = new WaveFileReader(_playbackFn);
+
+                    _wc = new WaveChannel32(_wfr);
+
+                    _audioOutput = new DirectSoundOut();
+
+                    _audioOutput.Init(_wc);
+
+                    _audioOutput.Play();
+
+                    _audioOutput.PlaybackStopped += onPlaybackStopped;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        "An error happened while trying to export the segment.\n\n" + ex.Message,
+                        App.AppName,
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    return;
+                }
+            }
+            else if (btnPlay.Content.ToString() == "Pause")
+            {
+                if (_audioOutput.PlaybackState == PlaybackState.Playing)
+                {
+                    _audioOutput.Pause();
+                    stiStatus.Content = "Currently paused: File " + _curPlayingID;
+                    btnPlay.Content = "Play";
+                }
+            }
+        }
+
+        private string exportSongToWav(Song song, BinaryReader br, string wavFn)
+        {
+            var data = extractSongData(song, br);
+            var tempFn = Path.GetDirectoryName(wavFn) + "\\" + Path.GetFileNameWithoutExtension(wavFn) + ".xma";
+            File.Copy("audio.xma", tempFn, true);
+            using (var bw = new BinaryWriter(File.OpenWrite(tempFn)))
+            {
+                bw.BaseStream.Position = 6518;
+                bw.Write(data);
+                bw.Flush();
+            }
+
+            var command = Directory.GetCurrentDirectory() + "\\xWMAEncode.exe";
+            var args = "\"" + tempFn + "\" \"" + wavFn + "\"";
+            var px = Process.Start(new ProcessStartInfo(command, args) { WindowStyle = ProcessWindowStyle.Hidden });
+            px.WaitForExit();
+            File.Delete(tempFn);
+            return wavFn;
+        }
+
+        private void onPlaybackStopped(object o, StoppedEventArgs eventArgs)
+        {
+            if (_audioOutput != null)
+            {
+                _audioOutput.Dispose();
+            }
+            if (_wc != null)
+            {
+                _wc.Dispose();
+            }
+            if (_wfr != null)
+            {
+                _wfr.Dispose();
+            }
+            try
+            {
+                File.Delete(_playbackFn);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Could not delete file " + _playbackFn + ": " + ex.Message);
+            }
+            btnPlay.Content = "Play";
+            stiStatus.Content = "Ready";
+        }
+
+        private void btnStop_Click(object sender, RoutedEventArgs e)
+        {
+            onPlaybackStopped(null, null);
+        }
+
+        private void window_Closing(object sender, CancelEventArgs e)
+        {
+            onPlaybackStopped(null, null);
         }
     }
 }
