@@ -434,6 +434,7 @@
             ms.Read(headBuf, 0, 4);
             _curChannels = !headBuf.SequenceEqual(StereoHeader) ? 1 : 2;
 
+            ms.Position = 0;
             Tools.AppInvoke(() => stiStatus.Content = "Please wait (0% completed)...");
             var stopwatch = new Stopwatch();
             stopwatch.Start();
