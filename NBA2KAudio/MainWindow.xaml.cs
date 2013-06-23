@@ -30,6 +30,8 @@
         private static readonly byte[] ChunkHeader = new byte[] { 105, 161, 190, 210 };
         private static readonly byte[] StereoHeader = new byte[] { 42, 49, 115, 98 };
         private static readonly string UpdateFileLocalPath = App.AppDocsPath + @"audversion.txt";
+        private static readonly byte[] XwmaDataHeader = { 100, 97, 116, 97 };
+        private static readonly byte[] XwmaDpdsHeader = { 100, 112, 100, 115 };
 
         private readonly List<long> _curChunkOffsets;
         private readonly List<long> _curSongOffsets;
@@ -41,6 +43,7 @@
         private long _userSongLength;
         private WaveChannel32 _wc;
         private WaveFileReader _wfr;
+        private List<int> _dpdsTable;
 
         public MainWindow()
         {
@@ -76,9 +79,13 @@
             }
 
             var ms = new MemoryStream(File.ReadAllBytes(txtSongFile.Text));
+            ms.Position = findArrayInStream(ms, XwmaDataHeader, 0) + 8;
+            var lengthToWrite = ms.Length - ms.Position;
             BinaryWriter bw;
+            BinaryReader br;
             try
             {
+                br = new BinaryReader(File.Open(txtJukeboxFile.Text, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
                 bw = new BinaryWriter(File.Open(txtJukeboxFile.Text, FileMode.Open, FileAccess.Write, FileShare.ReadWrite));
             }
             catch (Exception ex)
@@ -94,35 +101,48 @@
 
             var songToReplace = (Song) dgSongs.SelectedItem;
             bw.BaseStream.Position = _curChunkOffsets[songToReplace.FirstChunkID];
+            var lastDpdsEntry = _dpdsTable.Last();
+            for (var i = _dpdsTable.Count; i < songToReplace.ChunkCount * 10; i++)
+            {
+                _dpdsTable.Add(lastDpdsEntry);
+            }
 
             var bytesWritten = 0;
             for (var i = songToReplace.FirstChunkID; i <= songToReplace.LastChunkID; i++)
             {
                 var buf = new byte[ChunkBufferSize];
-                for (var j = 0; j < ChunkBufferSize; j++)
-                {
-                    buf[j] = 0;
-                }
+                Array.Clear(buf, 0, buf.Length);
 
-                bw.BaseStream.Position += 58L;
+                bw.BaseStream.Position += 56;
                 for (var j = 0; j < 10; j++)
                 {
-                    bw.Write((byte) (j + 1));
-                    bw.BaseStream.Position += 3;
+                    var curIndex = (i - songToReplace.FirstChunkID) * 10 + j;
+                    var toWrite = _dpdsTable[curIndex];
+                    if (curIndex > 9)
+                    {
+                        toWrite -= _dpdsTable[(curIndex / 10) * 10 - 1];
+                    }
+                    bw.Write(toWrite);
+                    if (curIndex % 10 == 9)
+                    {
+                        bw.BaseStream.Position -= 76;
+                        bw.Write(toWrite);
+                        bw.BaseStream.Position += 72;
+                    }
                 }
-                bw.BaseStream.Position -= 2;
+                
                 var chunkLength = (int) getChunkLength(i);
 
-                if (bytesWritten == ms.Length)
+                if (bytesWritten == lengthToWrite)
                 {
                     bw.Write(buf, 0, chunkLength);
                     bw.Flush();
                     continue;
                 }
 
-                if (bytesWritten + chunkLength > ms.Length)
+                if (bytesWritten + chunkLength > lengthToWrite)
                 {
-                    var newChunkLength = (int) (ms.Length - bytesWritten);
+                    var newChunkLength = (int)(lengthToWrite - bytesWritten);
                     ms.Read(buf, 0, newChunkLength);
                     bytesWritten += newChunkLength;
                 }
@@ -134,6 +154,7 @@
                 bw.Write(buf, 0, chunkLength);
                 bw.Flush();
             }
+            br.Close();
             bw.Close();
             ms.Close();
 
@@ -192,7 +213,7 @@
         private void btnSelectSong_Click(object sender, RoutedEventArgs e)
         {
             var ofd = new OpenFileDialog();
-            ofd.Filter = "All Compatible Audio Files (*.mp3;*.wav;*.dat)|*.mp3;*.wav;*.dat|MP3 Files (*.mp3)|*.mp3|WAV Files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            ofd.Filter = "All Compatible Audio Files (*.mp3;*.wav;*.xma)|*.mp3;*.wav;*.xma|MP3 Files (*.mp3)|*.mp3|WAV Files (*.wav)|*.wav|xWMA Files (*.xma)|*.xma|All Files (*.*)|*.*";
             ofd.InitialDirectory = Tools.GetRegistrySetting("LastSongPath", "");
 
             if (ofd.ShowDialog() == false)
@@ -206,19 +227,19 @@
             MemoryStream userSongData = null;
             if (Path.GetExtension(fn) == ".mp3")
             {
-                var datFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(fn) + ".dat";
+                var xmaFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(fn) + ".xma";
                 var done = false;
-                if (File.Exists(datFilePath))
+                if (File.Exists(xmaFilePath))
                 {
                     var mbr = MessageBox.Show(
-                        "File " + datFilePath + " already exists. Do you want to convert and overwrite?",
+                        "File " + xmaFilePath + " already exists. Do you want to convert and overwrite?",
                         App.AppName,
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
                     if (mbr == MessageBoxResult.No)
                     {
-                        userSongData = new MemoryStream(File.ReadAllBytes(datFilePath));
-                        txtSongFile.Text = datFilePath;
+                        userSongData = new MemoryStream(File.ReadAllBytes(xmaFilePath));
+                        txtSongFile.Text = xmaFilePath;
                         done = true;
                     }
                 }
@@ -226,8 +247,6 @@
                 if (!done)
                 {
                     var tempWavePath = Path.GetTempFileName();
-                    /* var command = Directory.GetCurrentDirectory() + "\\Sox\\sox.exe";
-                    var args = "\"" + ofd.FileName + "\" \"" + tempWavePath + "\" remix 2 rate 44100"; */
                     var command = "\"" + Directory.GetCurrentDirectory() + "\\Sox\\sox.exe\"";
                     var args = "\"" + ofd.FileName + "\" -t wav \"" + tempWavePath + "\" rate 44100";
                     try
@@ -235,7 +254,7 @@
                         var p = Process.Start(new ProcessStartInfo(command, args));
                         p.WaitForExit();
 
-                        WavToxWMADat(tempWavePath, datFilePath);
+                        WavToxWMAFull(tempWavePath, xmaFilePath);
                         File.Delete(tempWavePath);
                     }
                     catch (Exception ex)
@@ -243,25 +262,25 @@
                         errorMessageBox("An error occured while trying to convert the user audio file.", ex);
                         return;
                     }
-                    userSongData = new MemoryStream(File.ReadAllBytes(datFilePath));
-                    txtSongFile.Text = datFilePath;
+                    userSongData = new MemoryStream(File.ReadAllBytes(xmaFilePath));
+                    txtSongFile.Text = xmaFilePath;
                 }
             }
             else if (Path.GetExtension(fn) == ".wav")
             {
-                var datFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(fn) + ".dat";
+                var xmaFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(fn) + ".xma";
                 var done = false;
-                if (File.Exists(datFilePath))
+                if (File.Exists(xmaFilePath))
                 {
                     var mbr = MessageBox.Show(
-                        "File " + datFilePath + " already exists. Do you want to convert and overwrite?",
+                        "File " + xmaFilePath + " already exists. Do you want to convert and overwrite?",
                         App.AppName,
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
                     if (mbr == MessageBoxResult.No)
                     {
-                        userSongData = new MemoryStream(File.ReadAllBytes(datFilePath));
-                        txtSongFile.Text = datFilePath;
+                        userSongData = new MemoryStream(File.ReadAllBytes(xmaFilePath));
+                        txtSongFile.Text = xmaFilePath;
                         done = true;
                     }
                 }
@@ -270,15 +289,16 @@
                 {
                     try
                     {
-                        WavToxWMADat(fn, datFilePath);
+                        //WavToxWMADat(fn, datFilePath);
+                        WavToxWMAFull(fn, xmaFilePath);
                     }
                     catch (Exception ex)
                     {
                         errorMessageBox("An error occured while trying to convert the user audio file.", ex);
                         return;
                     }
-                    userSongData = new MemoryStream(File.ReadAllBytes(datFilePath));
-                    txtSongFile.Text = datFilePath;
+                    userSongData = new MemoryStream(File.ReadAllBytes(xmaFilePath));
+                    txtSongFile.Text = xmaFilePath;
                 }
             }
             else
@@ -286,10 +306,26 @@
                 userSongData = new MemoryStream(File.ReadAllBytes(fn));
                 txtSongFile.Text = fn;
             }
-            _userSongLength = userSongData.Length;
+            var dataPos = findArrayInStream(userSongData, XwmaDataHeader, 0) + 8;
+            _userSongLength = userSongData.Length - dataPos;
             var userSongDuration = (double) _userSongLength / 4000;
             var text = String.Format("Length: {0} bytes\nDuration: {1:F2}", _userSongLength, userSongDuration);
             txbSongInfo.Text = text;
+
+            _dpdsTable = new List<Int32>();
+            var dpdsPos = findArrayInStream(userSongData, XwmaDpdsHeader, 0) + 8;
+            userSongData.Position = dpdsPos;
+            var buf = new byte[4];
+            while (true)
+            {
+                userSongData.Read(buf, 0, 4);
+                var dec = BitConverter.ToInt32(buf, 0);
+                if (dec == 1635017060) // buf == data
+                {
+                    break;
+                }
+                _dpdsTable.Add(dec);
+            }
 
             userSongData.Close();
 
@@ -309,18 +345,14 @@
         private static void WavToxWMADat(string tempWavePath, string datFilePath)
         {
             var xmaPath = Path.GetTempFileName();
-            var command = Directory.GetCurrentDirectory() + "\\xWMAEncode.exe";
-            var args = "-b 32000 \"" + tempWavePath + "\" \"" + xmaPath + "\"";
-            var px = Process.Start(new ProcessStartInfo(command, args));
-            px.WaitForExit();
+            WavToxWMAFull(tempWavePath, xmaPath);
 
             var ms = new MemoryStream(File.ReadAllBytes(xmaPath));
             var tempbuf = new byte[4];
-            byte[] header = { 100, 97, 116, 97 };
             while (true)
             {
                 ms.Read(tempbuf, 0, 4);
-                if (!tempbuf.SequenceEqual(header))
+                if (!tempbuf.SequenceEqual(XwmaDataHeader))
                 {
                     ms.Position -= 3;
                     continue;
@@ -350,6 +382,14 @@
             }
             ms.Close();
             File.Delete(xmaPath);
+        }
+
+        private static void WavToxWMAFull(string wavPath, string xmaPath)
+        {
+            var command = Directory.GetCurrentDirectory() + "\\xWMAEncode.exe";
+            var args = "-b 32000 \"" + wavPath + "\" \"" + xmaPath + "\"";
+            var px = Process.Start(new ProcessStartInfo(command, args));
+            px.WaitForExit();
         }
 
         private async void btnSelectJukebox_Click(object sender, RoutedEventArgs e)
@@ -461,6 +501,7 @@
                             Math.Floor(((timeElapsed / 1000.0) * (100 - perc)) / 60),
                             Math.Floor(((timeElapsed / 1000.0) * (100 - perc)) % 60)));
                 }
+                /*
                 var bytesReadCount = ms.Read(bigBuf, 0, 1048576);
                 ms.Position -= bytesReadCount;
                 var found = false;
@@ -479,17 +520,18 @@
                     ms.Position += bytesReadCount >= 4 ? bytesReadCount - 3 : bytesReadCount;
                     continue;
                 }
-                /*
-                ms.Read(headBuf, 0, 4);
-                if (!headBuf.SequenceEqual(ChunkHeader))
-                {
-                    ms.Position -= 3;
-                    continue;
-                }
                 */
-                _curChunkOffsets.Add(ms.Position);
+                var pos = findArrayInStream(ms, ChunkHeader, ms.Position);
+                if (pos != -1)
+                {
+                    _curChunkOffsets.Add(pos);
+                }
+                else
+                {
+                    break;
+                }
 
-                ms.Position += 36;
+                ms.Position = pos + 36;
                 ms.Read(idBuf, 0, 2);
                 var chunkID = idBuf[1] * 256 + idBuf[0];
                 if (chunkID != 0)
@@ -515,6 +557,44 @@
             Tools.AppInvoke(() => stiStatus.Content = "Ready");
             Console.WriteLine(String.Format("{0} songs, {1} chunks detected.", _curSongOffsets.Count, _curChunkOffsets.Count));
             //MessageBox.Show(String.Format("{0} songs, {1} chunks detected.", _curSongOffsets.Count, _curChunkOffsets.Count));
+        }
+
+        private long findArrayInStream(Stream s, byte[] arr, long sStartPosition, int bufferSize = 1048576)
+        {
+            s.Position = sStartPosition;
+            var buffer = new byte[bufferSize];
+            var foundPosition = -1L;
+            while (s.Position < s.Length)
+            {
+                var bytesReadCount = s.Read(buffer, 0, bufferSize);
+                var found = true;
+                var arrLen = arr.Length;
+                for (var i = 0; i < bytesReadCount - (arrLen - 1); i++)
+                {
+                    found = true;
+                    if (s.Position - bytesReadCount + i == 14946)
+                    {
+                    }
+                    for (var j = 0; j < arrLen; j++)
+                    {
+                        if (buffer[i + j] != arr[j])
+                        {
+                            found = false;
+                            break;
+                        }
+                    }
+                    if (found)
+                    {
+                        foundPosition = s.Position - bytesReadCount + i;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    break;
+                }
+            }
+            return foundPosition;
         }
 
         private void btnSaveNames_Click(object sender, RoutedEventArgs e)
@@ -568,7 +648,7 @@
         {
             var mbr =
                 MessageBox.Show(
-                    "Any of your own audio files that you select gets converted to an NBA 2K-compatible DAT file in " + App.AppDocsPath
+                    "Any of your own audio files that you select gets converted to an NBA 2K-compatible XMA file in " + App.AppDocsPath
                     + " in order to allow you to reuse it without the need to wait for it to be converted again.\n\n"
                     + "Would you like to delete all converted files?\nThis will not affect your original MP3/WAV files.",
                     App.AppName,
@@ -580,6 +660,25 @@
             }
 
             var files = Directory.GetFiles(App.AppDocsPath, "*.dat");
+            foreach (var file in files)
+            {
+                if (txtSongFile.Text == file)
+                {
+                    txtSongFile.Text = "";
+                    txbSongInfo.Text = "";
+                }
+
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Exception thrown while trying to delete a file from the song cache: {0}", ex.Message);
+                }
+            }
+
+            files = Directory.GetFiles(App.AppDocsPath, "*.xma");
             foreach (var file in files)
             {
                 if (txtSongFile.Text == file)
