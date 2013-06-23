@@ -192,7 +192,7 @@
         private void btnSelectSong_Click(object sender, RoutedEventArgs e)
         {
             var ofd = new OpenFileDialog();
-            ofd.Filter = "MP3 Files (*.mp3)|*.mp3|WAV Files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            ofd.Filter = "All Compatible Audio Files (*.mp3;*.wav;*.dat)|*.mp3;*.wav;*.dat|MP3 Files (*.mp3)|*.mp3|WAV Files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
             ofd.InitialDirectory = Tools.GetRegistrySetting("LastSongPath", "");
 
             if (ofd.ShowDialog() == false)
