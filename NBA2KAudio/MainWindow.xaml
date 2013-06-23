@@ -29,7 +29,10 @@
                 <DataGridTextColumn Header="ID" Binding="{Binding ID}" IsReadOnly="True" />
                 <DataGridTextColumn Header="Length" Binding="{Binding Length}" IsReadOnly="True" />
                 <DataGridTextColumn Header="Duration" Binding="{Binding Duration, StringFormat=F2}" IsReadOnly="True" />
-                <DataGridTextColumn Header="Description" Binding="{Binding Description, StringFormat=F2}" />
+                <DataGridTextColumn Header="Description" Binding="{Binding Description}" />
+                <DataGridTextColumn Header="Offset" Binding="{Binding Offset}" Visibility="Collapsed" />
+                <DataGridTextColumn Header="ChunkCount" Binding="{Binding ChunkCount}" Visibility="Collapsed" />
+                <DataGridTextColumn Header="PacketCount" Binding="{Binding PacketCount}" Visibility="Collapsed" />
             </DataGrid.Columns>
         </DataGrid>
         <Button x:Name="btnSelectSong" Content="Browse" Margin="0,10,10,0" VerticalAlignment="Top"

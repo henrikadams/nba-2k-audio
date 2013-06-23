@@ -34,6 +34,7 @@
         private static readonly byte[] XwmaDpdsHeader = { 100, 112, 100, 115 };
 
         private readonly List<long> _curChunkOffsets;
+        private readonly List<int> _curChunkPacketCounts; 
         private readonly List<long> _curSongOffsets;
         private DirectSoundOut _audioOutput;
         private int _curChannels;
@@ -55,6 +56,7 @@
             }
 
             _curChunkOffsets = new List<long>();
+            _curChunkPacketCounts = new List<int>();
             _curSongOffsets = new List<long>();
             _allSongs = new List<Song>();
             _matchingSongs = new ObservableCollection<Song>();
@@ -114,7 +116,7 @@
                 Array.Clear(buf, 0, buf.Length);
 
                 bw.BaseStream.Position += 56;
-                for (var j = 0; j < 10; j++)
+                for (var j = 0; j < _curChunkPacketCounts[i]; j++)
                 {
                     var curIndex = (i - songToReplace.FirstChunkID) * 10 + j;
                     var toWrite = _dpdsTable[curIndex];
@@ -123,14 +125,15 @@
                         toWrite -= _dpdsTable[(curIndex / 10) * 10 - 1];
                     }
                     bw.Write(toWrite);
-                    if (curIndex % 10 == 9)
+                    if (curIndex % _curChunkPacketCounts[i] == _curChunkPacketCounts[i] - 1)
                     {
-                        bw.BaseStream.Position -= 76;
+                        bw.BaseStream.Position -= 36 + _curChunkPacketCounts[i] * 4;
                         bw.Write(toWrite);
-                        bw.BaseStream.Position += 72;
+                        bw.BaseStream.Position += 32 + _curChunkPacketCounts[i] * 4;
                     }
                 }
-                
+
+                bw.BaseStream.Position = _curChunkOffsets[i] + 56 + (_curChunkPacketCounts[i] * 4);
                 var chunkLength = (int) getChunkLength(i);
 
                 if (bytesWritten == lengthToWrite)
@@ -173,13 +176,18 @@
                 {
                     song.LastChunkID = _curChunkOffsets.IndexOf(_curSongOffsets[i + 1]) - 1;
                     song.ChunkCount = song.LastChunkID - song.FirstChunkID + 1;
-                    song.Length = _curChunkOffsets[song.LastChunkID + 1] - _curChunkOffsets[song.FirstChunkID] - (96 * song.ChunkCount);
                 }
                 else
                 {
                     song.LastChunkID = _curChunkOffsets.Count - 1;
                     song.ChunkCount = song.LastChunkID - song.FirstChunkID + 1;
-                    song.Length = _curFileLength - _curChunkOffsets[song.FirstChunkID] - (96 * song.ChunkCount);
+                }
+                song.Length = 0;
+                song.PacketCount = 0;
+                for (var j = song.FirstChunkID; j <= song.LastChunkID; j++)
+                {
+                    song.Length += getChunkLength(j);
+                    song.PacketCount += _curChunkPacketCounts[j];
                 }
                 song.ID = i;
                 song.Duration = (double) song.Length / 4000;
@@ -193,11 +201,11 @@
         {
             if (id != _curChunkOffsets.Count - 1)
             {
-                return _curChunkOffsets[id + 1] - _curChunkOffsets[id] - 96;
+                return _curChunkOffsets[id + 1] - _curChunkOffsets[id] - 56 - (_curChunkPacketCounts[id] * 4);
             }
             else
             {
-                return _curFileLength - _curChunkOffsets[id] - 96;
+                return _curFileLength - _curChunkOffsets[id] - 56 - (_curChunkPacketCounts[id] * 4);
             }
         }
 
@@ -455,6 +463,7 @@
         private void parseBinFile(string fn)
         {
             _curChunkOffsets.Clear();
+            _curChunkPacketCounts.Clear();
             _curSongOffsets.Clear();
 
             Stream ms;
@@ -501,26 +510,6 @@
                             Math.Floor(((timeElapsed / 1000.0) * (100 - perc)) / 60),
                             Math.Floor(((timeElapsed / 1000.0) * (100 - perc)) % 60)));
                 }
-                /*
-                var bytesReadCount = ms.Read(bigBuf, 0, 1048576);
-                ms.Position -= bytesReadCount;
-                var found = false;
-                for (var i = 0; i < bytesReadCount - 3; i++)
-                {
-                    if (bigBuf[i] == ChunkHeader[0] && bigBuf[i + 1] == ChunkHeader[1] && bigBuf[i + 2] == ChunkHeader[2]
-                        && bigBuf[i + 3] == ChunkHeader[3])
-                    {
-                        found = true;
-                        ms.Position += i;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    ms.Position += bytesReadCount >= 4 ? bytesReadCount - 3 : bytesReadCount;
-                    continue;
-                }
-                */
                 var pos = findArrayInStream(ms, ChunkHeader, ms.Position);
                 if (pos != -1)
                 {
@@ -530,27 +519,18 @@
                 {
                     break;
                 }
+                ms.Position = pos + 12;
+                ms.Read(idBuf, 0, 2);
+                _curChunkPacketCounts.Add(BitConverter.ToInt16(idBuf, 0));
 
                 ms.Position = pos + 36;
                 ms.Read(idBuf, 0, 2);
-                var chunkID = idBuf[1] * 256 + idBuf[0];
+                var chunkID = BitConverter.ToInt16(idBuf, 0);
                 if (chunkID != 0)
                 {
                     continue;
                 }
                 _curSongOffsets.Add(ms.Position - 38);
-
-                // The method below for detecting files works for most files, but not all, so it's replaced with the 
-                // code above
-                /*
-                    ms.Position += 98;
-                    ms.Read(headBuf, 0, 4);
-                    if (!headBuf.SequenceEqual(SongHeader))
-                    {
-                        continue;
-                    }
-                    _curSongOffsets.Add(ms.Position - 106);
-                    */
             }
             stopwatch.Stop();
 
@@ -707,7 +687,7 @@
 
             var sfd = new SaveFileDialog();
             sfd.InitialDirectory = App.AppDocsPath;
-            sfd.Filter = "WAV files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            sfd.Filter = "WAV files (*.wav)|*.wav|xWMA Files (*.xma)|*.xma|All Files (*.*)|*.*";
             sfd.AddExtension = true;
 
             if (sfd.ShowDialog() == false)
@@ -724,9 +704,9 @@
             {
                 using (var br = new BinaryReader(File.OpenRead(txtJukeboxFile.Text)))
                 {
-                    if (ext == ".dat")
+                    if (ext == ".xma")
                     {
-                        exportSong(song, fn, br);
+                        exportSongToXwma(song, br, fn);
                     }
                     else
                     {
@@ -747,21 +727,23 @@
             MessageBox.Show("Audio segment exported to " + fn + ".");
         }
 
-        private void exportSong(Song song, string destFn, BinaryReader br)
-        {
-            var data = extractSongData(song, br);
-
-            File.WriteAllBytes(destFn, data);
-        }
-
-        private byte[] extractSongData(Song song, BinaryReader br)
+        private byte[] extractSongData(Song song, BinaryReader br, out List<Int32> dpdsTable)
         {
             var buf = new byte[ChunkBufferSize];
             var data = new List<byte>();
+            dpdsTable = new List<Int32>();
+            var curDecLen = 0;
             br.BaseStream.Position = song.Offset;
             for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
             {
-                br.BaseStream.Position += 96;
+                br.BaseStream.Position += 56;
+                int packetDecLen = 0;
+                for (var j = 0; j < _curChunkPacketCounts[i]; j++)
+                {
+                    packetDecLen = curDecLen + br.ReadInt32();
+                    dpdsTable.Add(packetDecLen);
+                }
+                curDecLen = packetDecLen;
                 var chunkLen = getChunkLength(i);
                 br.Read(buf, 0, (int) chunkLen);
                 data.AddRange(buf.Take((int) chunkLen));
@@ -866,7 +848,7 @@
 
             var sfd = new SaveFileDialog();
             sfd.InitialDirectory = App.AppDocsPath;
-            sfd.Filter = "WAV files (*.wav)|*.wav|xWMA Stripped DAT Files (*.dat)|*.dat|All Files (*.*)|*.*";
+            sfd.Filter = "WAV files (*.wav)|*.wav|xWMA Files (*.xma)|*.xma|All Files (*.*)|*.*";
             sfd.Title = "Select a folder and base filename";
             sfd.AddExtension = true;
 
@@ -899,9 +881,9 @@
                             Path.GetDirectoryName(baseFn) + "\\" + Path.GetFileNameWithoutExtension(baseFn),
                             song.ID,
                             ext);
-                        if (ext == ".dat")
+                        if (ext == ".xma")
                         {
-                            await TaskEx.Run(() => exportSong(song, fn, br));
+                            await TaskEx.Run(() => exportSongToXwma(song, br, fn));
                         }
                         else
                         {
@@ -1003,22 +985,51 @@
 
         private string exportSongToWav(Song song, BinaryReader br, string wavFn)
         {
-            var data = extractSongData(song, br);
-            var tempFn = Path.GetDirectoryName(wavFn) + "\\" + Path.GetFileNameWithoutExtension(wavFn) + ".xma";
-            File.Copy(_curChannels == 2 ? "audio.xma" : "audiom.xma", tempFn, true);
-            using (var bw = new BinaryWriter(File.OpenWrite(tempFn)))
+            var xmaFn = Path.GetDirectoryName(wavFn) + "\\" + Path.GetFileNameWithoutExtension(wavFn) + ".xma";
+
+            exportSongToXwma(song, br, xmaFn);
+
+            var command = Directory.GetCurrentDirectory() + "\\xWMAEncode.exe";
+            var args = "\"" + xmaFn + "\" \"" + wavFn + "\"";
+            var px = Process.Start(new ProcessStartInfo(command, args) { WindowStyle = ProcessWindowStyle.Hidden });
+            px.WaitForExit();
+            File.Delete(xmaFn);
+            return wavFn;
+        }
+
+        private void exportSongToXwma(Song song, BinaryReader br, string xmaFn)
+        {
+            var dpdsTable = new List<Int32>();
+            var data = extractSongData(song, br, out dpdsTable);
+            File.Copy(_curChannels == 2 ? "audio.xma" : "audiom.xma", xmaFn, true);
+
+            long packetCount, dpdsPos, dataPos;
+            using (var tempBr = new MemoryStream(File.ReadAllBytes(xmaFn)))
             {
-                bw.BaseStream.Position = 6518;
+                dpdsPos = findArrayInStream(tempBr, XwmaDpdsHeader, 0) + 8;
+                dataPos = findArrayInStream(tempBr, XwmaDataHeader, dpdsPos);
+                packetCount = (dataPos - dpdsPos) / 4;
+            }
+
+            using (var bw = new BinaryWriter(File.OpenWrite(xmaFn)))
+            {
+                bw.BaseStream.Position = dpdsPos;
+                for (var i = 0; i < packetCount; i++)
+                {
+                    if (i < dpdsTable.Count)
+                    {
+                        bw.Write(dpdsTable[i]);
+                    }
+                    else
+                    {
+                        bw.Write(dpdsTable.Last());
+                    }
+                }
+
+                bw.BaseStream.Position = dataPos + 8;
                 bw.Write(data);
                 bw.Flush();
             }
-
-            var command = Directory.GetCurrentDirectory() + "\\xWMAEncode.exe";
-            var args = "\"" + tempFn + "\" \"" + wavFn + "\"";
-            var px = Process.Start(new ProcessStartInfo(command, args) { WindowStyle = ProcessWindowStyle.Hidden });
-            px.WaitForExit();
-            File.Delete(tempFn);
-            return wavFn;
         }
 
         private void onPlaybackStopped(object o, StoppedEventArgs eventArgs)
