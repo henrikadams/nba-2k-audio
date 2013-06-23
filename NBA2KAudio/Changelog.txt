@@ -1,6 +1,10 @@
 ﻿NBA 2K Audio Editor
 	What's New
 
+	v0.5
+		- Improvement: All sounds are now playable, no matter their length
+		- Improvement: Fixed all skipping in user-imported sounds
+
 	v0.4.1
 		- Improvement: Improved playing & exporting compatibility to include mono files
 	
