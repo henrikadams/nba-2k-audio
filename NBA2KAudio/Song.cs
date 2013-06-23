@@ -33,6 +33,7 @@ namespace NBA2KAudio
         public int ID { get; set; }
         public long Offset { get; set; }
         public int ChunkCount { get; set; }
+        public int PacketCount { get; set; }
         public long Length { get; set; }
         public int FirstChunkID { get; set; }
         public int LastChunkID { get; set; }
