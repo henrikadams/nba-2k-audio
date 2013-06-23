@@ -12,7 +12,7 @@
 
 					
 	Known Issues
-		- There's a bit of skipping (like twice in 2 minutes, from my testing), some more research needs to be done on that matter.
+		- Sometimes songs may not automatically switch after a user-imported one ends
 		
 		
 	Disclaimer
