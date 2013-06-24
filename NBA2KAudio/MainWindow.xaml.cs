@@ -729,12 +729,6 @@
             var files = Directory.GetFiles(App.AppDocsPath, "*.dat");
             foreach (var file in files)
             {
-                if (txtSongFile.Text == file)
-                {
-                    txtSongFile.Text = "";
-                    txbSongInfo.Text = "";
-                }
-
                 try
                 {
                     File.Delete(file);
@@ -761,6 +755,19 @@
                 catch (Exception ex)
                 {
                     Console.WriteLine("Exception thrown while trying to delete a file from the song cache: {0}", ex.Message);
+                }
+            }
+
+            files = Directory.GetFiles(App.AppTempPath);
+            foreach (var file in files)
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Exception thrown while trying to delete a file from the temp folder: {0}", ex.Message);
                 }
             }
         }
