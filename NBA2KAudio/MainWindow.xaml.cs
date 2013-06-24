@@ -404,7 +404,7 @@
             var dataPos = findArrayInStream(userSongData, XwmaDataHeader, 0) + 8;
             _userSongLength = userSongData.Length - dataPos;
             var userSongDuration = (double) _userSongLength / 4000;
-            var text = String.Format("Length: {0} bytes\nDuration: {1:F2}", _userSongLength, userSongDuration);
+            var text = String.Format("Length: {0} bytes\nDuration: {1}", _userSongLength, Song.FormatDurationString(userSongDuration));
             txbSongInfo.Text = text;
 
             _dpdsTable = new List<Int32>();
@@ -1160,6 +1160,14 @@
         private void window_Closing(object sender, CancelEventArgs e)
         {
             onPlaybackStopped(null, null);
+        }
+
+        private void btnClearSong_Click(object sender, RoutedEventArgs e)
+        {
+            txtSongFile.Text = "";
+            txbSongInfo.Text = "";
+            _userSongLength = 0;
+            refreshMatchingSongs();
         }
     }
 }
