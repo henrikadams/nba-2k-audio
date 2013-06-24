@@ -1,6 +1,9 @@
 ﻿NBA 2K Audio Editor
 	What's New
 
+	v0.5.0.1
+		- Fix: MP3 files in paths with special characters will no longer cause the tool to crash
+
 	v0.5
 		- Improvement: All sounds are now playable, no matter their length
 		- Improvement: Fixed all skipping in user-imported sounds
