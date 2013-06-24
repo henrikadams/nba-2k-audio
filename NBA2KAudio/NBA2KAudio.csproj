@@ -84,6 +84,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Helper.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Song.cs" />
     <Page Include="MainWindow.xaml">

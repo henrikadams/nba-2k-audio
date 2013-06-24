@@ -34,7 +34,7 @@
         private static readonly byte[] XwmaDpdsHeader = { 100, 112, 100, 115 };
 
         private readonly List<long> _curChunkOffsets;
-        private readonly List<int> _curChunkPacketCounts; 
+        private readonly List<int> _curChunkPacketCounts;
         private readonly List<long> _curSongOffsets;
         private DirectSoundOut _audioOutput;
         private int _curChannels;
@@ -50,16 +50,29 @@
         {
             InitializeComponent();
 
-            if (!Directory.Exists(App.AppDocsPath))
-            {
-                Directory.CreateDirectory(App.AppDocsPath);
-            }
-
             _curChunkOffsets = new List<long>();
             _curChunkPacketCounts = new List<int>();
             _curSongOffsets = new List<long>();
             _allSongs = new List<Song>();
             _matchingSongs = new ObservableCollection<Song>();
+
+            if (!Directory.Exists(App.AppDocsPath))
+            {
+                Directory.CreateDirectory(App.AppDocsPath);
+            }
+
+            try
+            {
+                Directory.Delete(App.AppTempPath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Couldn't delete AppTempPath ({0}): {1}", App.AppTempPath, ex.Message);
+            }
+            if (!Directory.Exists(App.AppTempPath))
+            {
+                Directory.CreateDirectory(App.AppTempPath);
+            }
 
             Tools.AppName = App.AppName;
             Tools.AppRegistryKey = App.AppRegistryKey;
@@ -145,7 +158,7 @@
 
                 if (bytesWritten + chunkLength > lengthToWrite)
                 {
-                    var newChunkLength = (int)(lengthToWrite - bytesWritten);
+                    var newChunkLength = (int) (lengthToWrite - bytesWritten);
                     ms.Read(buf, 0, newChunkLength);
                     bytesWritten += newChunkLength;
                 }
@@ -221,7 +234,8 @@
         private void btnSelectSong_Click(object sender, RoutedEventArgs e)
         {
             var ofd = new OpenFileDialog();
-            ofd.Filter = "All Compatible Audio Files (*.mp3;*.wav;*.xma)|*.mp3;*.wav;*.xma|MP3 Files (*.mp3)|*.mp3|WAV Files (*.wav)|*.wav|xWMA Files (*.xma)|*.xma|All Files (*.*)|*.*";
+            ofd.Filter =
+                "All Compatible Audio Files (*.mp3;*.wav;*.xma)|*.mp3;*.wav;*.xma|MP3 Files (*.mp3)|*.mp3|WAV Files (*.wav)|*.wav|xWMA Files (*.xma)|*.xma|All Files (*.*)|*.*";
             ofd.InitialDirectory = Tools.GetRegistrySetting("LastSongPath", "");
 
             if (ofd.ShowDialog() == false)
@@ -229,13 +243,24 @@
                 return;
             }
 
-            var fn = ofd.FileName;
-            Tools.SetRegistrySetting("LastSongPath", Path.GetDirectoryName(ofd.FileName));
+            var origFn = ofd.FileName;
+            Tools.SetRegistrySetting("LastSongPath", Path.GetDirectoryName(origFn));
 
             MemoryStream userSongData = null;
-            if (Path.GetExtension(fn) == ".mp3")
+            if (Path.GetExtension(origFn) == ".mp3")
             {
-                var xmaFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(fn) + ".xma";
+                var changed = false;
+                var normFn = Helper.RemoveDiacritics(origFn, true);
+                var newFn = "";
+                if (String.Compare(normFn, origFn, StringComparison.CurrentCulture) != 0)
+                {
+                    changed = true;
+                    newFn = App.AppTempPath + Helper.RemoveDiacritics(Path.GetFileName(origFn), true);
+                    File.Copy(origFn, newFn, true);
+                    origFn = newFn;
+                }
+
+                var xmaFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(origFn) + ".xma";
                 var done = false;
                 if (File.Exists(xmaFilePath))
                 {
@@ -256,27 +281,85 @@
                 {
                     var tempWavePath = Path.GetTempFileName();
                     var command = "\"" + Directory.GetCurrentDirectory() + "\\Sox\\sox.exe\"";
-                    var args = "\"" + ofd.FileName + "\" -t wav \"" + tempWavePath + "\" rate 44100";
+                    var args = "\"" + origFn + "\" -t wav \"" + tempWavePath + "\" rate 44100";
                     try
                     {
-                        var p = Process.Start(new ProcessStartInfo(command, args));
+                        var allOutput = "";
+                        var p = new Process
+                            {
+                                StartInfo =
+                                    {
+                                        FileName = command,
+                                        Arguments = args,
+                                        RedirectStandardOutput = true,
+                                        RedirectStandardError = true,
+                                        UseShellExecute = false
+                                    }
+                            };
+                        p.OutputDataReceived += (o, eventArgs) =>
+                            {
+                                if (eventArgs.Data != null)
+                                {
+                                    allOutput += eventArgs.Data + "\n";
+                                }
+                            };
+                        p.ErrorDataReceived += (o, eventArgs) =>
+                            {
+                                if (eventArgs.Data != null)
+                                {
+                                    allOutput += eventArgs.Data + "\n";
+                                }
+                            };
+
+                        p.Start();
+                        p.BeginOutputReadLine();
+                        p.BeginErrorReadLine();
                         p.WaitForExit();
 
+                        if (!File.Exists(tempWavePath))
+                        {
+                            throw new Exception(
+                                String.Format("No WAV file after SOX MP3->WAV conversion.\n\nSOX Output:\n{0}", allOutput));
+                        }
+                        if (new FileInfo(tempWavePath).Length == 0)
+                        {
+                            throw new Exception(
+                                string.Format("Zero-length WAV file after SOX MP3->WAV conversion.\n\nSOX Output:\n{0}", allOutput));
+                        }
+
+                        if (changed)
+                        {
+                            try
+                            {
+                                File.Delete(newFn);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine("Couldn't delete temporary unescaped name MP3: {0}", ex.Message);
+                            }
+                        }
+
                         WavToxWMAFull(tempWavePath, xmaFilePath);
+
+                        if (!File.Exists(xmaFilePath))
+                        {
+                            throw new Exception("No xWMA file after xWMAEncode WAV-xWMA conversion.");
+                        }
+
                         File.Delete(tempWavePath);
                     }
                     catch (Exception ex)
                     {
-                        errorMessageBox("An error occured while trying to convert the user audio file.", ex);
+                        errorMessageBox("An error occurred while trying to convert the user audio file.", ex);
                         return;
                     }
                     userSongData = new MemoryStream(File.ReadAllBytes(xmaFilePath));
                     txtSongFile.Text = xmaFilePath;
                 }
             }
-            else if (Path.GetExtension(fn) == ".wav")
+            else if (Path.GetExtension(origFn) == ".wav")
             {
-                var xmaFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(fn) + ".xma";
+                var xmaFilePath = App.AppDocsPath + Path.GetFileNameWithoutExtension(origFn) + ".xma";
                 var done = false;
                 if (File.Exists(xmaFilePath))
                 {
@@ -297,8 +380,12 @@
                 {
                     try
                     {
-                        //WavToxWMADat(fn, datFilePath);
-                        WavToxWMAFull(fn, xmaFilePath);
+                        WavToxWMAFull(origFn, xmaFilePath);
+
+                        if (!File.Exists(xmaFilePath))
+                        {
+                            throw new Exception("No xWMA file after xWMAEncode WAV-xWMA conversion.");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -311,8 +398,8 @@
             }
             else
             {
-                userSongData = new MemoryStream(File.ReadAllBytes(fn));
-                txtSongFile.Text = fn;
+                userSongData = new MemoryStream(File.ReadAllBytes(origFn));
+                txtSongFile.Text = origFn;
             }
             var dataPos = findArrayInStream(userSongData, XwmaDataHeader, 0) + 8;
             _userSongLength = userSongData.Length - dataPos;
