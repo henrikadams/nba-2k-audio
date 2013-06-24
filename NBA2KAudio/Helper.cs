@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace NBA2KAudio
+﻿namespace NBA2KAudio
 {
+    #region Using Directives
+
+    using System;
+    using System.Collections.Generic;
     using System.Globalization;
+    using System.Text;
+
+    #endregion
 
     internal class Helper
     {
         public static IEnumerable<char> RemoveDiacriticsEnum(string src, bool compatNorm, Func<char, char> customFolding)
         {
-            foreach (char c in src.Normalize(compatNorm ? NormalizationForm.FormKD : NormalizationForm.FormD))
+            foreach (var c in src.Normalize(compatNorm ? NormalizationForm.FormKD : NormalizationForm.FormD))
             {
                 switch (CharUnicodeInfo.GetUnicodeCategory(c))
                 {
@@ -34,8 +36,8 @@ namespace NBA2KAudio
 
         public static string RemoveDiacritics(string src, bool compatNorm, Func<char, char> customFolding)
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (char c in RemoveDiacriticsEnum(src, compatNorm, customFolding))
+            var sb = new StringBuilder();
+            foreach (var c in RemoveDiacriticsEnum(src, compatNorm, customFolding))
             {
                 sb.Append(c);
             }

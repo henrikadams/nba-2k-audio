@@ -40,11 +40,11 @@
         private int _curChannels;
         private long _curFileLength;
         private int _curPlayingID;
+        private List<int> _dpdsTable;
         private string _playbackFn = "";
         private long _userSongLength;
         private WaveChannel32 _wc;
         private WaveFileReader _wfr;
-        private List<int> _dpdsTable;
 
         public MainWindow()
         {
@@ -831,7 +831,7 @@
             for (var i = song.FirstChunkID; i <= song.LastChunkID; i++)
             {
                 br.BaseStream.Position += 56;
-                int packetDecLen = 0;
+                var packetDecLen = 0;
                 for (var j = 0; j < _curChunkPacketCounts[i]; j++)
                 {
                     packetDecLen = curDecLen + br.ReadInt32();
