@@ -138,7 +138,7 @@
                         toWrite -= _dpdsTable[(curIndex / 10) * 10 - 1];
                     }
                     bw.Write(toWrite);
-                    if (curIndex % _curChunkPacketCounts[i] == _curChunkPacketCounts[i] - 1)
+                    if (j == _curChunkPacketCounts[i] - 1)
                     {
                         bw.BaseStream.Position -= 36 + _curChunkPacketCounts[i] * 4;
                         bw.Write(toWrite);
@@ -148,7 +148,7 @@
 
                 bw.BaseStream.Position = _curChunkOffsets[i] + 56 + (_curChunkPacketCounts[i] * 4);
                 var chunkLength = (int) getChunkLength(i);
-
+                
                 if (bytesWritten == lengthToWrite)
                 {
                     bw.Write(buf, 0, chunkLength);
@@ -520,6 +520,12 @@
             refreshMatchingSongs();
             dgSongs.ItemsSource = _matchingSongs;
             IsEnabled = true;
+
+#if DEBUG
+            File.WriteAllLines(App.AppTempPath + "chunks.txt", _curChunkOffsets.Select(o => o.ToString()));
+            File.WriteAllLines(App.AppTempPath + "chunkCounts.txt", _curChunkPacketCounts.Select(o => o.ToString()));
+            File.WriteAllLines(App.AppTempPath + "songs.txt", _curSongOffsets.Select(o => o.ToString()));
+#endif
         }
 
         private static void errorMessageBox(string msg, Exception ex)
