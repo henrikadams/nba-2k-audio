@@ -63,7 +63,7 @@
 
             try
             {
-                Directory.Delete(App.AppTempPath);
+                Directory.Delete(App.AppTempPath, true);
             }
             catch (Exception ex)
             {
