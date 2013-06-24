@@ -1,6 +1,9 @@
 ﻿NBA 2K Audio Editor
 	What's New
 
+	v0.5.0.2
+		- Fix: Fixed bug which would erase some chunk headers when replacing a song in some cases
+
 	v0.5.0.1
 		- Fix: MP3 files in paths with special characters will no longer cause the tool to crash
 
