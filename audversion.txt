@@ -1,3 +1,4 @@
 0.5.0.2
 http://forums.nba-live.com/downloads.php?view=detail&df_id=5116
 
+If you've edited audio files with any version prior to 0.5.0.2, please rebuild them using the original game files as a base after upgrading to the latest version. Any audio files edited with previous versions may be corrupted.
