@@ -20,6 +20,7 @@ namespace NBA2KAudio
 {
     #region Using Directives
 
+    using System;
     using System.ComponentModel;
     using System.Runtime.CompilerServices;
 
@@ -38,6 +39,31 @@ namespace NBA2KAudio
         public int FirstChunkID { get; set; }
         public int LastChunkID { get; set; }
         public double Duration { get; set; }
+
+        public string DurationS
+        {
+            get {
+                return FormatDurationString(Duration);
+            }
+        }
+
+        public static string FormatDurationString(double duration)
+        {
+            var mins = Convert.ToInt32(Math.Floor(duration / 60));
+            string minsS = "";
+            if (mins > 0)
+            {
+                minsS = mins + ":";
+            }
+
+            var secs = Convert.ToInt32(Math.Floor(duration % 60));
+            string secsS = secs.ToString().PadLeft(mins > 0 ? 2 : 1, '0');
+
+            var decPart = Convert.ToInt32((duration - Math.Floor(duration)) * 100);
+            var decS = decPart.ToString().PadLeft(2, '0');
+
+            return String.Format("{0}{1}.{2}", minsS, secsS, decS);
+        }
 
         public string Description
         {
