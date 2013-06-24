@@ -77,6 +77,8 @@
             Tools.AppName = App.AppName;
             Tools.AppRegistryKey = App.AppRegistryKey;
             Tools.OpenRegistryKey(true);
+
+            Title = String.Format("NBA 2K Audio Editor v{0} - by Leftos & nesa24", Assembly.GetExecutingAssembly().GetName().Version);
         }
 
         private List<Song> _allSongs { get; set; }
