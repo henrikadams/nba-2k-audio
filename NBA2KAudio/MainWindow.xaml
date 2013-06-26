@@ -30,6 +30,7 @@
                 <DataGridTextColumn Header="Length" Binding="{Binding Length}" IsReadOnly="True" />
                 <DataGridTextColumn Header="Duration" Binding="{Binding DurationS}" IsReadOnly="True" />
                 <DataGridTextColumn Header="Description" Binding="{Binding Description}" />
+                <DataGridTextColumn Header="Duration (Secs)" Binding="{Binding Duration}" IsReadOnly="True" Visibility="Collapsed" />
                 <DataGridTextColumn Header="Offset" Binding="{Binding Offset}" Visibility="Collapsed" />
                 <DataGridTextColumn Header="ChunkCount" Binding="{Binding ChunkCount}" Visibility="Collapsed" />
                 <DataGridTextColumn Header="PacketCount" Binding="{Binding PacketCount}" Visibility="Collapsed" />

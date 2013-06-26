@@ -863,20 +863,21 @@
             try
             {
                 var webClient = new WebClient();
-                var updateUri = "http://www.nba-live.com/leftos/audversion.txt";
+                const string UpdateUri = "http://www.nba-live.com/leftos/audversion.txt";
                 if (!showMessage)
                 {
-                    webClient.DownloadFileCompleted += CheckForUpdatesCompleted;
-                    webClient.DownloadFileAsync(new Uri(updateUri), UpdateFileLocalPath);
+                    webClient.DownloadFileCompleted += checkForUpdatesCompleted;
+                    webClient.DownloadFileAsync(new Uri(UpdateUri), UpdateFileLocalPath);
                 }
                 else
                 {
-                    webClient.DownloadFile(new Uri(updateUri), UpdateFileLocalPath);
-                    CheckForUpdatesCompleted(null, null);
+                    webClient.DownloadFile(new Uri(UpdateUri), UpdateFileLocalPath);
+                    checkForUpdatesCompleted(null, null);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine("Exception thrown while trying to check for updates: {0}", ex.Message);
             }
         }
 
@@ -885,7 +886,7 @@
         /// <param name="e">
         ///     The <see cref="AsyncCompletedEventArgs" /> instance containing the event data.
         /// </param>
-        private static void CheckForUpdatesCompleted(object sender, AsyncCompletedEventArgs e)
+        private static void checkForUpdatesCompleted(object sender, AsyncCompletedEventArgs e)
         {
             string[] updateInfo;
             string[] versionParts;
@@ -919,8 +920,9 @@
                             changelog += "\n" + updateInfo[j].Replace('\t', ' ');
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Console.WriteLine("Exception thrown while trying to check for updates: {0}", ex.Message);
                     }
                     var mbr = MessageBox.Show(
                         "A new version is available! Would you like to download it?" + changelog,
@@ -935,10 +937,6 @@
                     return;
                 }
             }
-            /*
-            if (showUpdateMessage)
-                MessageBox.Show("No updates found!");
-            */
         }
 
         private async void btnExportAll_Click(object sender, RoutedEventArgs e)
